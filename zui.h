@@ -51,18 +51,22 @@ void zui_set_style(struct nk_context *ctx)
     // TEXTO
     ctx->style.text.color = phosphor_green;
 }
-
 void zui_render(struct nk_context *ctx, int win_width, int win_height)
 {
     char buffer[32];
     struct nk_command_buffer *canvas;
 
+    // ABRIMOS LA VENTANA UNA SOLA VEZ
     if (nk_begin(ctx, "ZaramagaDock", nk_rect(0, 0, (float)win_width, (float)win_height), NK_WINDOW_NO_SCROLLBAR))
     {
-
         canvas = nk_window_get_canvas(ctx);
 
-        // --- CABECERA ---
+        // --- 1. ESPACIO PARA EL LOGO ---
+        // Dejamos 220px libres arriba
+        nk_layout_row_dynamic(ctx, 70, 1);
+        nk_spacing(ctx, 1);
+
+        // --- 2. CABECERA ---
         nk_layout_row_dynamic(ctx, 40, 1);
         nk_label(ctx, " [ ZARAMAGA OS V1 ] ", NK_TEXT_CENTERED);
 
@@ -71,7 +75,7 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
         struct nk_rect bounds = nk_layout_widget_bounds(ctx);
         nk_fill_rect(canvas, bounds, 0, phosphor_green);
 
-        // --- SECCIÓN: AUDIO ---
+        // --- 3. SECCIÓN: AUDIO ---
         nk_layout_row_dynamic(ctx, 30, 1);
         nk_label(ctx, ">> AUDIO_CONTROL", NK_TEXT_LEFT);
 
@@ -83,8 +87,7 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
         nk_layout_row_dynamic(ctx, 20, 1);
         nk_slider_float(ctx, 0.0f, &vol_value, 1.0f, 0.01f);
 
-        // --- SECCIÓN: VIDEO ---
-        nk_layout_row_dynamic(ctx, 20, 1);
+        // --- 4. SECCIÓN: VIDEO ---
         nk_layout_row_dynamic(ctx, 30, 1);
         nk_label(ctx, ">> VIDEO_OUTPUT", NK_TEXT_LEFT);
 
@@ -99,13 +102,21 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
         nk_layout_row_dynamic(ctx, 20, 1);
         nk_progress(ctx, (nk_size *)&brightness, 100, NK_MODIFIABLE);
 
-        // --- PIE DE PÁGINA (Botones abajo) ---
-        // Calculamos un espaciador dinámico
-        float content_height = 320.0f;
-        float spacer = (float)win_height - content_height - 120.0f;
-        if (spacer > 0)
-            nk_layout_row_dynamic(ctx, spacer, 1);
+        // --- 5. PIE DE PÁGINA (Botones abajo) ---
+        // Sumamos el alto de todo lo que hay arriba:
+        // Logo(220) + Cabecera(40) + Separador(5) + Audio(100) + Video(100) aprox = 465px
+        float occupied_space = 465.0f;
+        float spacer = (float)win_height - occupied_space - 120.0f; // 120px para los botones finales
 
+        // Si el spacer es positivo, empujamos los botones hacia abajo.
+        // Si es negativo (pantalla pequeña), no ponemos espacio para que no desaparezcan.
+        /* if (spacer > 0)
+        {
+            nk_layout_row_dynamic(ctx, spacer, 1);
+            nk_spacing(ctx, 1);
+        } */
+
+        // Botones de salida
         nk_layout_row_dynamic(ctx, 40, 1);
         if (nk_button_label(ctx, "[ EXIT TO SHELL ]"))
         {
@@ -119,7 +130,7 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
         if (nk_button_label(ctx, "OFF"))
             system("poweroff");
     }
+    // CERRAMOS LA VENTANA UNA SOLA VEZ
     nk_end(ctx);
 }
-
 #endif
