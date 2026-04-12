@@ -75,7 +75,7 @@ void draw_logo_shm(cairo_t *cr, int x, int y)
         cairo_save(cr);
         cairo_translate(cr, x, y);
 
-        float escala = 200.0f / (float)w;
+        float escala = 100.0f / (float)w;
         cairo_scale(cr, escala, escala);
 
         cairo_set_source_surface(cr, surf, 0, 0);
@@ -136,7 +136,7 @@ void draw_nuklear_to_cairo(struct nk_context *ctx, cairo_t *cr)
         break;
         }
     }
-    draw_logo_shm(cr, 30, 10);
+    draw_logo_shm(cr, 90, 10);
 }
 
 // --- RENDERIZADO ---
