@@ -4,3 +4,4 @@ gcc mainNl.c wlr-layer-shell-unstable-v1.c xdg-shell.c -o zmenun     $(pkg-confi
 [alb@zaramagaOS waylandz]$ 
 
 xxd -i logo.png > logo_data.h
+xxd -i zaramagaos.png > logo_data.h
