@@ -42,7 +42,7 @@ struct nk_context ctx;
 
 uint32_t *shm_data_global;
 int win_width = 300;
-int win_height = 1080;
+int win_height = 850;
 int cur_x = 0, cur_y = 0;
 
 void draw_logo_shm(cairo_t *cr, int x, int y)

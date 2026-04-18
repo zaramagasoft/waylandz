@@ -67,17 +67,17 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
         nk_spacing(ctx, 1);
 
         // --- 2. CABECERA ---
-        nk_layout_row_dynamic(ctx, 40, 1);
-        nk_label(ctx, " [ ZARAMAGA OS V1 ] ", NK_TEXT_CENTERED);
+       /*  nk_layout_row_dynamic(ctx, 40, 1);
+        nk_label(ctx, " [ ZARAMAGA OS V1 ] ", NK_TEXT_CENTERED); */
 
         // Línea divisoria (Separador)
-        nk_layout_row_dynamic(ctx, 5, 1);
+        nk_layout_row_dynamic(ctx, 1, 1);
         struct nk_rect bounds = nk_layout_widget_bounds(ctx);
         nk_fill_rect(canvas, bounds, 0, phosphor_green);
 
         // --- 3. SECCIÓN: AUDIO ---
         nk_layout_row_dynamic(ctx, 30, 1);
-        nk_label(ctx, ">> AUDIO_CONTROL", NK_TEXT_LEFT);
+        nk_label(ctx, "AUDIO", NK_TEXT_CENTERED);
 
         nk_layout_row_dynamic(ctx, 25, 2);
         nk_label(ctx, "MASTER VOL:", NK_TEXT_LEFT);
@@ -102,35 +102,36 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
         nk_layout_row_dynamic(ctx, 20, 1);
         nk_progress(ctx, (nk_size *)&brightness, 100, NK_MODIFIABLE);
 
-        // --- 5. PIE DE PÁGINA (Botones abajo) ---
-        // Sumamos el alto de todo lo que hay arriba:
-        // Logo(220) + Cabecera(40) + Separador(5) + Audio(100) + Video(100) aprox = 465px
-        float occupied_space = 465.0f;
-        float spacer = (float)win_height - occupied_space - 120.0f; // 120px para los botones finales
+       // --- 5. PIE DE PÁGINA (Botones al fondo) ---
+        
+        // --- 5. PIE DE PÁGINA (Botones abajo con Layout Space) ---
+        
+        // Reservamos el espacio final de la ventana
+        float footer_height = 100.0f; // Altura total del bloque de botones
+        float win_h = (float)win_height;
+        float win_w = (float)win_width;
 
-        // Si el spacer es positivo, empujamos los botones hacia abajo.
-        // Si es negativo (pantalla pequeña), no ponemos espacio para que no desaparezcan.
-        /* if (spacer > 0)
-        {
-            nk_layout_row_dynamic(ctx, spacer, 1);
-            nk_spacing(ctx, 1);
-        } */
-
-        // Botones de salida
-        nk_layout_row_dynamic(ctx, 40, 1);
-        if (nk_button_label(ctx, "[ EXIT TO SHELL ]"))
-        {
+        // nk_layout_space nos permite colocar cosas por coordenadas
+        nk_layout_space_begin(ctx, NK_STATIC, footer_height, 3); // 3 widgets abajo
+        
+        // Botón EXIT (Ancho completo)
+        nk_layout_space_push(ctx, nk_rect(10, 0, win_w - 20, 35));
+        if (nk_button_label(ctx, "[ EXIT TO SHELL ]")) {
             system("pkill -9 gamescope");
             exit(0);
         }
 
-        nk_layout_row_dynamic(ctx, 35, 2);
-        if (nk_button_label(ctx, "REBOOT"))
-            system("reboot");
-        if (nk_button_label(ctx, "OFF"))
-            system("poweroff");
+        // Botón REBOOT (Izquierda)
+        nk_layout_space_push(ctx, nk_rect(10, 45, (win_w / 2) - 15, 35));
+        if (nk_button_label(ctx, "REBOOT")) system("reboot");
+
+        // Botón OFF (Derecha)
+        nk_layout_space_push(ctx, nk_rect((win_w / 2) + 5, 45, (win_w / 2) - 15, 35));
+        if (nk_button_label(ctx, "OFF")) system("poweroff");
+
+        nk_layout_space_end(ctx);
     }
-    // CERRAMOS LA VENTANA UNA SOLA VEZ
+    // CERRAMOSLA VENTANA UNA SOLA VEZ
     nk_end(ctx);
 }
 #endif

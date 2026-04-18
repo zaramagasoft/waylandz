@@ -1,0 +1,24 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "gcc build",
+            "type": "shell",
+            "command": "gcc",
+            "args": [
+                "mainNl.c",
+                "wlr-layer-shell-unstable-v1.c",
+                "xdg-shell.c",
+                "-o", "zmenun",
+                "-g", 
+                "-lm",
+                "-O2",
+                "$(pkg-config", "--cflags", "--libs", "wayland-client", "cairo)"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ]
+}
