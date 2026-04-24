@@ -25,7 +25,7 @@
 // AHORA definimos una guarda para que zui.h no intente re-implementar nada
 #undef NK_IMPLEMENTATION
 
-#include "zui.h"
+#include "zui2.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h" // Tienes que bajar este .h y ponerlo en tu carpeta
@@ -46,7 +46,7 @@ struct nk_context ctx;
 
 uint32_t *shm_data_global;
 int win_width = 300;
-int win_height = 850;
+int win_height = 550;
 int cur_x = 0, cur_y = 0;
 
 void draw_logo_shm(cairo_t *cr, int x, int y)
@@ -227,9 +227,17 @@ static void global_registry_handler(void *data, struct wl_registry *reg, uint32_
         seat = wl_registry_bind(reg, id, &wl_seat_interface, 1);
 }
 
-
-  int main()
+int main(int argc, char **argv)
 {
+    int win_width = 300;
+    int win_height = 1080;
+
+    if (argc >= 3)
+    {
+        win_width = atoi(argv[1]);
+        win_height = atoi(argv[2]);
+    }
+
     display = wl_display_connect(NULL);
     struct wl_registry *reg = wl_display_get_registry(display);
     static const struct wl_registry_listener rl = {global_registry_handler, NULL};
@@ -242,7 +250,7 @@ static void global_registry_handler(void *data, struct wl_registry *reg, uint32_
 
     // 2. CONFIGURAMOS EL ATLAS DE FUENTES
     struct nk_font_atlas atlas;
-    int w, h; 
+    int w, h;
     nk_font_atlas_init_default(&atlas);
     nk_font_atlas_begin(&atlas);
 
@@ -251,15 +259,18 @@ static void global_registry_handler(void *data, struct wl_registry *reg, uint32_
 
     // Cocinamos la fuente (Bake)
     const void *image = nk_font_atlas_bake(&atlas, &w, &h, NK_FONT_ATLAS_ALPHA8);
-    
+
     // Finalizamos el atlas. nk_handle_id(0) es suficiente para SHM/Cairo
     nk_font_atlas_end(&atlas, nk_handle_id(0), NULL);
 
     // 3. ASIGNAMOS LA FUENTE SEGÚN EL RESULTADO
-    if (jetbrains) {
+    if (jetbrains)
+    {
         printf("ZaramagaOS: JetBrains Nerd Font cargada correctamente.\n");
         nk_style_set_font(&ctx, &jetbrains->handle);
-    } else {
+    }
+    else
+    {
         printf("ZaramagaOS: No se encontró el .ttf, usando fuente por defecto.\n");
         // Solo si falla la carga usamos el fallback manual
         static struct nk_user_font fallback_font;
@@ -267,8 +278,6 @@ static void global_registry_handler(void *data, struct wl_registry *reg, uint32_
         fallback_font.width = text_get_width; // Asegúrate de que text_get_width esté definida arriba
         nk_style_set_font(&ctx, &fallback_font);
     }
-
-   
 
     struct wl_surface *surf = wl_compositor_create_surface(compositor);
     int size = win_width * win_height * 4;
@@ -278,11 +287,12 @@ static void global_registry_handler(void *data, struct wl_registry *reg, uint32_
     struct wl_shm_pool *pool = wl_shm_create_pool(shm, fd, size);
     buffer = wl_shm_pool_create_buffer(pool, 0, win_width, win_height, win_width * 4, WL_SHM_FORMAT_ARGB8888);
     close(fd);
-
+    //ojo margenes
     struct zwlr_layer_surface_v1 *ls = zwlr_layer_shell_v1_get_layer_surface(layer_shell, surf, NULL, ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY, "dock");
     static const struct zwlr_layer_surface_v1_listener lsl = {layer_surface_configure, (void *)exit};
-    zwlr_layer_surface_v1_set_anchor(ls, ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM);
+    zwlr_layer_surface_v1_set_anchor(ls, ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM);
     zwlr_layer_surface_v1_set_size(ls, win_width, 0);
+    zwlr_layer_surface_v1_set_margin(ls, 0, 0, win_height/5, 0);//mas o menos el margen del logo, ajusta a tu gusto
     zwlr_layer_surface_v1_add_listener(ls, &lsl, surf);
 
     if (seat)
