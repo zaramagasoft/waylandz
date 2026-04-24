@@ -123,9 +123,26 @@ void draw_nuklear_to_cairo(struct nk_context *ctx, cairo_t *cr)
         }
         break;
         case NK_COMMAND_TEXT:
-        {
+        { /*
+             const struct nk_command_text *t = (const struct nk_command_text *)cmd;
+             cairo_set_source_rgba(cr, t->foreground.r / 255.0, t->foreground.g / 255.0, t->foreground.b / 255.0, t->foreground.a / 255.0);
+             cairo_move_to(cr, t->x, t->y + t->height - 5);
+             cairo_show_text(cr, (const char *)t->string); */
             const struct nk_command_text *t = (const struct nk_command_text *)cmd;
-            cairo_set_source_rgba(cr, t->foreground.r / 255.0, t->foreground.g / 255.0, t->foreground.b / 255.0, t->foreground.a / 255.0);
+
+            cairo_set_source_rgba(cr,
+                                  t->foreground.r / 255.0,
+                                  t->foreground.g / 255.0,
+                                  t->foreground.b / 255.0,
+                                  t->foreground.a / 255.0);
+
+            // 👇 AQUÍ eliges la fuente
+            cairo_select_font_face(cr, "Retro Gaming",
+                                   CAIRO_FONT_SLANT_NORMAL,
+                                   CAIRO_FONT_WEIGHT_NORMAL);
+
+            cairo_set_font_size(cr, t->height);
+
             cairo_move_to(cr, t->x, t->y + t->height - 5);
             cairo_show_text(cr, (const char *)t->string);
         }
@@ -287,12 +304,12 @@ int main(int argc, char **argv)
     struct wl_shm_pool *pool = wl_shm_create_pool(shm, fd, size);
     buffer = wl_shm_pool_create_buffer(pool, 0, win_width, win_height, win_width * 4, WL_SHM_FORMAT_ARGB8888);
     close(fd);
-    //ojo margenes
+    // ojo margenes
     struct zwlr_layer_surface_v1 *ls = zwlr_layer_shell_v1_get_layer_surface(layer_shell, surf, NULL, ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY, "dock");
     static const struct zwlr_layer_surface_v1_listener lsl = {layer_surface_configure, (void *)exit};
     zwlr_layer_surface_v1_set_anchor(ls, ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM);
     zwlr_layer_surface_v1_set_size(ls, win_width, 0);
-    zwlr_layer_surface_v1_set_margin(ls, 0, 0, win_height/5, 0);//mas o menos el margen del logo, ajusta a tu gusto
+    zwlr_layer_surface_v1_set_margin(ls, 0, 0, win_height / 5, 0); // mas o menos el margen del logo, ajusta a tu gusto
     zwlr_layer_surface_v1_add_listener(ls, &lsl, surf);
 
     if (seat)
