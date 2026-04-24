@@ -78,6 +78,8 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
         // --- 3. SECCIÓN: AUDIO ---
         nk_layout_row_dynamic(ctx, 30, 1);
         nk_label(ctx, "AUDIO", NK_TEXT_CENTERED);
+        nk_label(ctx, "\xEE\xA4\x80 audio", NK_TEXT_LEFT);
+        nk_button_label(ctx, "\xEE\xA4\x80");
 
         nk_layout_row_dynamic(ctx, 25, 2);
         nk_label(ctx, "MASTER VOL:", NK_TEXT_LEFT);
