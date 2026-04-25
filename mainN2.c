@@ -206,6 +206,25 @@ void draw_nuklear_to_cairo(struct nk_context *ctx, cairo_t *cr)
             cairo_clip(cr);
         }
         break;
+        case NK_COMMAND_CIRCLE_FILLED:
+        {
+            const struct nk_command_circle_filled *c = (const struct nk_command_circle_filled *)cmd;
+
+            cairo_set_source_rgba(cr,
+                                  c->color.r / 255.0,
+                                  c->color.g / 255.0,
+                                  c->color.b / 255.0,
+                                  c->color.a / 255.0);
+
+            cairo_arc(cr,
+                      c->x + c->w / 2.0,
+                      c->y + c->h / 2.0,
+                      c->w / 2.0,
+                      0, 2 * 3.1416);
+
+            cairo_fill(cr);
+        }
+        break;
         }
     }
     // draw_logo_shm(cr, 90, 10);

@@ -100,12 +100,22 @@ void zui_set_style(struct nk_context *ctx)
     ctx->style.button.text_normal = phosphor_green;
     ctx->style.button.text_hover = nk_rgb(255, 255, 255);
 
-    // SLIDERS (Estos campos son de tipo struct nk_color, no nk_style_item)
+    /*  // SLIDERS (Estos campos son de tipo struct nk_color, no nk_style_item)
+     ctx->style.slider.bar_normal = dark_green;
+     ctx->style.slider.bar_active = phosphor_green;
+     ctx->style.slider.cursor_size = nk_vec2(20, 20); // Un cursor más grande y cuadrado
+     ctx->style.slider.rounding = 0;                  // Sin bordes redondeados, todo cuadrado
+  */
+    // SLIDERS (Corregido para ZaramagaOS)
     ctx->style.slider.bar_normal = dark_green;
-    ctx->style.slider.bar_active = phosphor_green;
-    ctx->style.slider.cursor_size = nk_vec2(20, 20); // Un cursor más grande y cuadrado
-    ctx->style.slider.rounding = 0;                  // Sin bordes redondeados, todo cuadrado
+    ctx->style.slider.bar_active = phosphor_green;        // Color de la barra "rellena"
+    ctx->style.slider.cursor_normal = nk_style_item_color(nk_rgb(0, 205, 0)); // 👈 EL TIRADOR
+    ctx->style.slider.cursor_hover = nk_style_item_color(phosphor_green);
+    ctx->style.slider.cursor_active = nk_style_item_color(phosphor_green);
 
+    ctx->style.slider.cursor_size = nk_vec2(25, 25); // Tamaño del cuadrado
+    ctx->style.slider.bar_height = 6.0f;             // Un poco más gruesa para que se vea industrial
+    ctx->style.slider.rounding = 0;                  // Cuadrado puro
     // TEXTO
     ctx->style.text.color = phosphor_green;
 }
