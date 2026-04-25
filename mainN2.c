@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <poll.h>
 #include <sys/mman.h>
 #include <wayland-client.h>
 #include <cairo.h>
@@ -48,7 +49,7 @@ uint32_t *shm_data_global;
 int win_width = 300;
 int win_height = 550;
 int cur_x = 0, cur_y = 0;
-
+/*
 void draw_logo_shm(cairo_t *cr, int x, int y)
 {
     int w, h, channels;
@@ -90,6 +91,56 @@ void draw_logo_shm(cairo_t *cr, int x, int y)
         cairo_surface_destroy(surf);
         stbi_image_free(pixels);
     }
+} */
+void draw_logo_shm(cairo_t *cr,
+                   int x, int y,
+                   int max_w, int max_h)
+{
+    int w, h, channels;
+    unsigned char *pixels = stbi_load_from_memory(
+        zaramagaos_png, zaramagaos_png_len,
+        &w, &h, &channels, 4);
+
+    if (!pixels)
+        return;
+
+    // --- RGBA → BGRA premultiplicado ---
+    for (int i = 0; i < w * h * 4; i += 4)
+    {
+        unsigned char r = pixels[i];
+        unsigned char g = pixels[i + 1];
+        unsigned char b = pixels[i + 2];
+        unsigned char a = pixels[i + 3];
+
+        pixels[i] = (b * a) / 255;
+        pixels[i + 1] = (g * a) / 255;
+        pixels[i + 2] = (r * a) / 255;
+        pixels[i + 3] = a;
+    }
+
+    int stride = cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, w);
+    cairo_surface_t *surf =
+        cairo_image_surface_create_for_data(
+            pixels, CAIRO_FORMAT_ARGB32, w, h, stride);
+
+    // 🔥 escala proporcional (clave)
+    float scale_x = (float)max_w / (float)w;
+    float scale_y = (float)max_h / (float)h;
+    float scale = (scale_x < scale_y) ? scale_x : scale_y;
+
+    cairo_save(cr);
+
+    cairo_translate(cr, x, y);
+    cairo_scale(cr, scale, scale);
+
+    cairo_set_source_surface(cr, surf, 0, 0);
+    cairo_pattern_set_filter(cairo_get_source(cr), CAIRO_FILTER_GOOD);
+    cairo_paint(cr);
+
+    cairo_restore(cr);
+
+    cairo_surface_destroy(surf);
+    stbi_image_free(pixels);
 }
 
 // --- TRADUCTOR NUKLEAR A CAIRO ---
@@ -137,7 +188,7 @@ void draw_nuklear_to_cairo(struct nk_context *ctx, cairo_t *cr)
                                   t->foreground.a / 255.0);
 
             // 👇 AQUÍ eliges la fuente
-            cairo_select_font_face(cr, "Retro Gaming",
+            cairo_select_font_face(cr, "JetBrainsMono Nerd Font Mono",
                                    CAIRO_FONT_SLANT_NORMAL,
                                    CAIRO_FONT_WEIGHT_NORMAL);
 
@@ -157,7 +208,15 @@ void draw_nuklear_to_cairo(struct nk_context *ctx, cairo_t *cr)
         break;
         }
     }
-    draw_logo_shm(cr, 90, 10);
+    // draw_logo_shm(cr, 90, 10);
+    int logo_height = win_height * 0.15f; // 15% arriba
+
+    draw_logo_shm(
+        cr,
+        win_width / 2 - (logo_height / 2), // Centrado horizontalmente
+        0,
+        win_width,
+        logo_height);
 }
 
 // --- RENDERIZADO ---
@@ -309,7 +368,7 @@ int main(int argc, char **argv)
     static const struct zwlr_layer_surface_v1_listener lsl = {layer_surface_configure, (void *)exit};
     zwlr_layer_surface_v1_set_anchor(ls, ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM);
     zwlr_layer_surface_v1_set_size(ls, win_width, 0);
-    zwlr_layer_surface_v1_set_margin(ls, 0, 0, win_height / 5, 0); // mas o menos el margen del logo, ajusta a tu gusto
+    zwlr_layer_surface_v1_set_margin(ls, 0, 0, 0, 0); // mas o menos el margen del logo, ajusta a tu gusto
     zwlr_layer_surface_v1_add_listener(ls, &lsl, surf);
 
     if (seat)
@@ -319,7 +378,32 @@ int main(int argc, char **argv)
     }
 
     wl_surface_commit(surf);
-    while (wl_display_dispatch(display) != -1)
-        ;
+    while (1)
+    {
+        // 1. Despacha eventos que ya están en la cola
+        while (wl_display_prepare_read(display) != 0)
+            wl_display_dispatch_pending(display);
+
+        // 2. Envía peticiones al compositor
+        wl_display_flush(display);
+
+        // 3. Espera eventos con un timeout (ej. 100ms = 10 FPS de refresco pasivo)
+        // Esto evita que el CPU esté al 100% pero actualiza el volumen solo
+        struct pollfd fds[] = {
+            {wl_display_get_fd(display), POLLIN, 0}};
+
+        if (poll(fds, 1, 2000) > 0)
+        {
+            wl_display_read_events(display);
+            wl_display_dispatch_pending(display);
+        }
+        else
+        {
+            wl_display_cancel_read(display);
+        }
+
+        // 4. FORZAMOS RENDER aunque no haya inputs
+        render_frame(surf);
+    }
     return 0;
 }

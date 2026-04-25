@@ -6,15 +6,70 @@
 #include <stdio.h>
 
 // Variables de estado
-static float vol_value = 0.6f;
-static int brightness = 80;
-static int current_resolution = 0;
-static const char *res_options[] = {"1920x1080", "1280x720", "800x600"};
+// static float vol_value = 0.6f;
+// static int brightness = 80;
+// static int current_resolution = 0;
+// static const char *res_options[] = {"1920x1080", "1280x720", "800x600"};
 
 // Definimos los colores aquí arriba para que todas las funciones los vean
 static struct nk_color dark_bg;
 static struct nk_color phosphor_green;
 static struct nk_color dark_green;
+
+static float vol_value = 0.6f;
+// static float bright_value = 0.8f;
+
+// 🔊 VOLUMEN
+static void zui_set_volume(float v)
+{
+    int vol = (int)(v * 100.0f);
+    char cmd[64];
+    snprintf(cmd, sizeof(cmd),
+             "pactl set-sink-volume @DEFAULT_SINK@ %d%%", vol);
+    system(cmd);
+}
+// --- LÓGICA DE AUDIO (ABSTRACCIÓN) ---
+int GetSystemVolume()
+{
+    int volume = 0;
+    // Este comando de pactl es estándar y muy rápido
+    FILE *fp = popen("pactl get-sink-volume @DEFAULT_SINK@ | grep -Po '\\d+(?=%)' | head -n 1", "r");
+
+    if (fp != NULL)
+    {
+        char buffer[16];
+        if (fgets(buffer, sizeof(buffer), fp) != NULL)
+        {
+            volume = atoi(buffer);
+        }
+        pclose(fp);
+    }
+    return volume;
+}
+
+void UpdateVolume(int delta)
+{
+    vol_value = GetSystemVolume();
+    vol_value += delta;
+    if (vol_value < 0)
+        vol_value = 0;
+    if (vol_value >= 150)
+        vol_value = 150;
+
+    // Ejecución en segundo plano para no congelar el frame
+    char cmd[64];
+    sprintf(cmd, "pactl set-sink-volume @DEFAULT_SINK@ %d%% &", (int)(vol_value * 100));
+    system(cmd);
+}
+/* // 💡 BRILLO
+static void zui_set_brightness(float v)
+{
+    int percent = (int)(v * 100.0f);
+    char cmd[64];
+    snprintf(cmd, sizeof(cmd),
+             "brightnessctl set %d%%", percent);
+    system(cmd);
+} */
 
 void zui_init_colors()
 {
@@ -26,6 +81,9 @@ void zui_init_colors()
 void zui_set_style(struct nk_context *ctx)
 {
     zui_init_colors();
+
+    ctx->style.slider.bar_height = 30.0f;
+    ctx->style.slider.cursor_size = nk_vec2(46, 46);
 
     // VENTANA
     ctx->style.window.fixed_background = nk_style_item_color(dark_bg);
@@ -53,87 +111,169 @@ void zui_set_style(struct nk_context *ctx)
 }
 void zui_render(struct nk_context *ctx, int win_width, int win_height)
 {
-    char buffer[32];
-    struct nk_command_buffer *canvas;
+    static float last_sys_vol = -1.0f;
 
-    // ABRIMOS LA VENTANA UNA SOLA VEZ
-    if (nk_begin(ctx, "ZaramagaDock", nk_rect(0, 0, (float)win_width, (float)win_height), NK_WINDOW_NO_SCROLLBAR))
+    float sys_vol = GetSystemVolume() / 100.0f; // siempre leer sistema
+    static int skip_frames = 0;
+    if (skip_frames++ % 5 == 0)
+    { // Solo lee el volumen real cada ~0.5 segundos
+        vol_value = GetSystemVolume() / 100.0f;
+    }
+
+    // --- ZONAS ---
+    float logo_h = win_height * 0.15f;
+    float footer_h = win_height * 0.20f;
+    float middle_h = win_height - logo_h - footer_h;
+    vol_value = GetSystemVolume() / 100.0f; // Actualiza el volumen cada frame
+
+    if (nk_begin(ctx, "ZaramagaDock",
+                 nk_rect(0, 0, (float)win_width, (float)win_height),
+                 NK_WINDOW_NO_SCROLLBAR))
     {
-        canvas = nk_window_get_canvas(ctx);
+        struct nk_command_buffer *canvas = nk_window_get_canvas(ctx);
 
-        // --- 1. ESPACIO PARA EL LOGO ---
-        // Dejamos 220px libres arriba
-        nk_layout_row_dynamic(ctx, 70, 1);
-        nk_spacing(ctx, 1);
+        // --- POSICIONES ---
+        float y = 0;
 
-        // --- 2. CABECERA ---
-       /*  nk_layout_row_dynamic(ctx, 40, 1);
-        nk_label(ctx, " [ ZARAMAGA OS V1 ] ", NK_TEXT_CENTERED); */
+        // =========================
+        // 🟢 LOGO ZONE (debug opcional)
+        // =========================
+        nk_fill_rect(canvas,
+                     nk_rect(0, y, win_width, logo_h),
+                     0,
+                     // nk_rgb(0, 255, 0));
+                     nk_rgba(40, 40, 40, 20)); // 👈 ALPHA
 
-        // Línea divisoria (Separador)
-        nk_layout_row_dynamic(ctx, 1, 1);
-        struct nk_rect bounds = nk_layout_widget_bounds(ctx);
-        nk_fill_rect(canvas, bounds, 0, phosphor_green);
+        y += logo_h;
 
-        // --- 3. SECCIÓN: AUDIO ---
-        nk_layout_row_dynamic(ctx, 30, 1);
-        nk_label(ctx, "AUDIO", NK_TEXT_CENTERED);
-        nk_label(ctx, "\xEE\xA4\x80 audio", NK_TEXT_LEFT);
-        nk_button_label(ctx, "\xEE\xA4\x80");
+        // =========================
+        // 🔵 MIDDLE ZONE (debug opcional)
+        // =========================
+        nk_fill_rect(canvas,
+                     nk_rect(0, y, win_width, middle_h),
+                     0,
+                     // nk_rgb(0, 0, 255));
+                     nk_rgba(40, 40, 40, 20)); // 👈 ALPHA
+        // nk_button_label(ctx, "\uF028"); // volumen
+        float paddingM = 20.0f;
+        float row_h = 30.0f;
+        float start_y = y + 40;
 
-        nk_layout_row_dynamic(ctx, 25, 2);
-        nk_label(ctx, "MASTER VOL:", NK_TEXT_LEFT);
+        // columnas
+        float icon_w = 30.0f;
+        float label_w = 60.0f;
+        float value_w = 40.0f;
+        float slider_w = win_width - (paddingM * 2 + icon_w + label_w + value_w + 20);
+        // float paddingM = 20.0f;
+        float slider_h = 55.0f;
+
+        // SLIDER 1
+        nk_layout_space_begin(ctx, NK_STATIC, middle_h, 8);
+
+        // ICONO
+        nk_layout_space_push(ctx,
+                             nk_rect(paddingM, start_y, icon_w, row_h * 2));
+        nk_label(ctx, "\uF028", NK_TEXT_CENTERED);
+
+        // LABEL
+        nk_layout_space_push(ctx,
+                             nk_rect(paddingM + icon_w, start_y, label_w, row_h * 2));
+        nk_label(ctx, "VOLUME", NK_TEXT_LEFT);
+
+        // SLIDER
+        nk_layout_space_push(ctx,
+                             nk_rect(paddingM + icon_w + label_w + 10, start_y, slider_w, row_h * 2));
+        if (nk_slider_float(ctx, 0.0f, &vol_value, 2.0f, 0.01f))
+        {
+            zui_set_volume(vol_value);
+        }
+
+        // VALOR
+        char buffer[16];
         sprintf(buffer, "%d%%", (int)(vol_value * 100));
+
+        nk_layout_space_push(ctx,
+                             nk_rect(win_width - paddingM - value_w, start_y, value_w, row_h * 2));
         nk_label(ctx, buffer, NK_TEXT_RIGHT);
 
-        nk_layout_row_dynamic(ctx, 20, 1);
-        nk_slider_float(ctx, 0.0f, &vol_value, 1.0f, 0.01f);
+        /*  // SLIDER 2
+         start_y += row_h + 20;
 
-        // --- 4. SECCIÓN: VIDEO ---
-        nk_layout_row_dynamic(ctx, 30, 1);
-        nk_label(ctx, ">> VIDEO_OUTPUT", NK_TEXT_LEFT);
+         // ICONO
+         nk_layout_space_push(ctx,
+                              nk_rect(paddingM, start_y, icon_w, row_h));
+         nk_label(ctx, "\uF185", NK_TEXT_CENTERED);
 
-        nk_layout_row_dynamic(ctx, 30, 1);
-        current_resolution = nk_combo(ctx, res_options, 3, current_resolution, 25, nk_vec2((float)win_width - 40, 200));
+         // LABEL
+         nk_layout_space_push(ctx,
+                              nk_rect(paddingM + icon_w, start_y, label_w, row_h));
+         nk_label(ctx, "BRIGHT", NK_TEXT_LEFT);
 
-        nk_layout_row_dynamic(ctx, 25, 2);
-        nk_label(ctx, "BRIGHTNESS:", NK_TEXT_LEFT);
-        sprintf(buffer, "%d", brightness);
-        nk_label(ctx, buffer, NK_TEXT_RIGHT);
+         // SLIDER
+         nk_layout_space_push(ctx,
+                              nk_rect(paddingM + icon_w + label_w + 10, start_y, slider_w, row_h));
+         if (nk_slider_float(ctx, 0.0f, &bright_value, 1.0f, 0.01f))
+         {
+             zui_set_brightness(bright_value);
+         }
 
-        nk_layout_row_dynamic(ctx, 20, 1);
-        nk_progress(ctx, (nk_size *)&brightness, 100, NK_MODIFIABLE);
+         // VALOR
+         sprintf(buffer, "%d%%", (int)(bright_value * 100));
 
-       // --- 5. PIE DE PÁGINA (Botones al fondo) ---
-        
-        // --- 5. PIE DE PÁGINA (Botones abajo con Layout Space) ---
-        
-        // Reservamos el espacio final de la ventana
-        float footer_height = 100.0f; // Altura total del bloque de botones
-        float win_h = (float)win_height;
-        float win_w = (float)win_width;
+         nk_layout_space_push(ctx,
+                              nk_rect(win_width - paddingM - value_w, start_y, value_w, row_h));
+         nk_label(ctx, buffer, NK_TEXT_RIGHT);
 
-        // nk_layout_space nos permite colocar cosas por coordenadas
-        nk_layout_space_begin(ctx, NK_STATIC, footer_height, 3); // 3 widgets abajo
-        
-        // Botón EXIT (Ancho completo)
-        nk_layout_space_push(ctx, nk_rect(10, 0, win_w - 20, 35));
-        if (nk_button_label(ctx, "[ EXIT TO SHELL ]")) {
-            system("pkill -9 gamescope");
+         nk_layout_space_end(ctx); */
+
+        // =========================
+        // 🔴 FOOTER ZONE
+        // =========================
+        nk_fill_rect(canvas,
+                     nk_rect(0, y, win_width, footer_h),
+                     0,
+                     // nk_rgb(40, 40, 40));
+
+                     nk_rgba(40, 40, 40, 20)); // 👈 ALPHA
+
+        // --- BOTONES ---
+        float padding = 15.0f;
+        float btn_h = 40.0f;
+
+        float btn_w_full = win_width - (padding * 2);
+        float btn_w_half = (win_width - (padding * 3)) / 2;
+
+        // centrado vertical dentro del footer
+        float total_h = (btn_h * 2) + 10;
+        float y_btn = y + (footer_h - total_h) / 2;
+
+        nk_layout_space_begin(ctx, NK_STATIC, footer_h, 3);
+
+        // EXIT
+        nk_layout_space_push(ctx,
+                             nk_rect(padding, y_btn, btn_w_full, btn_h));
+
+        if (nk_button_label(ctx, "[ EXIT ]"))
+        {
             exit(0);
         }
 
-        // Botón REBOOT (Izquierda)
-        nk_layout_space_push(ctx, nk_rect(10, 45, (win_w / 2) - 15, 35));
-        if (nk_button_label(ctx, "REBOOT")) system("reboot");
+        // REBOOT / OFF
+        y_btn += btn_h + 10;
 
-        // Botón OFF (Derecha)
-        nk_layout_space_push(ctx, nk_rect((win_w / 2) + 5, 45, (win_w / 2) - 15, 35));
-        if (nk_button_label(ctx, "OFF")) system("poweroff");
+        nk_layout_space_push(ctx,
+                             nk_rect(padding, y_btn, btn_w_half, btn_h));
+
+        nk_button_label(ctx, "REBOOT");
+
+        nk_layout_space_push(ctx,
+                             nk_rect(padding * 2 + btn_w_half, y_btn, btn_w_half, btn_h));
+
+        nk_button_label(ctx, "OFF");
 
         nk_layout_space_end(ctx);
     }
-    // CERRAMOSLA VENTANA UNA SOLA VEZ
+
     nk_end(ctx);
 }
 #endif
