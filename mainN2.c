@@ -53,12 +53,15 @@ struct wl_seat *seat;
 struct wl_buffer *buffer;
 struct nk_context ctx;
 struct wl_surface *surf;
+struct wl_cursor_theme *cursor_theme;
+struct wl_cursor *default_cursor;
+struct wl_surface *cursor_surface;
 bool configured = false;
 static int frame_count = 0;
 uint32_t *shm_data_global;
 static int retFlag = 0;
 static bool needs_redraw = false;
- //ojo a estudiar bien esto, es la clave para no hacer render cada vez que recibimos un configure, sino solo cuando realmente haya que redibujar
+// ojo a estudiar bien esto, es la clave para no hacer render cada vez que recibimos un configure, sino solo cuando realmente haya que redibujar
 pid_t pid = -1; // Variable global al principio del archivo
 int win_width = 300;
 int win_height = 550;
@@ -80,7 +83,7 @@ void start_zui_monitor()
 
     if (pid == 0)
     {
-        #include <sys/prctl.h>
+#include <sys/prctl.h>
         prctl(PR_SET_PDEATHSIG, SIGTERM);
         // HIJO: Solo vigila y avisa
         signal(SIGUSR1, SIG_IGN);
@@ -296,7 +299,7 @@ void draw_nuklear_to_cairo(struct nk_context *ctx, cairo_t *cr)
 
     draw_logo_shm(
         cr,
-        (win_width / 2 + (logo_height/3)) - (logo_height), // Centrado horizontalmente
+        (win_width / 2 + (logo_height / 3)) - (logo_height), // Centrado horizontalmente
         0,
         win_width,
         logo_height);
@@ -420,6 +423,7 @@ int main(int argc, char **argv)
 }
 int wayinit(int win_width, int win_height, int *retFlag)
 {
+
     *retFlag = 1;
     display = wl_display_connect(NULL);
     if (!display)
@@ -463,7 +467,9 @@ int wayinit(int win_width, int win_height, int *retFlag)
     zwlr_layer_surface_v1_set_anchor(ls, ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM);
     zwlr_layer_surface_v1_set_size(ls, win_width, 0);
     zwlr_layer_surface_v1_add_listener(ls, &lsl, surf);
-
+    struct wl_cursor_theme *cursor_theme;
+    struct wl_cursor *default_cursor;
+    struct wl_surface *cursor_surface;
     if (seat)
     {
         struct wl_pointer *ptr = wl_seat_get_pointer(seat);
@@ -553,9 +559,9 @@ int refesco(struct wl_surface *surf)
         // Añadimos 500ms de margen para asegurar que el sistema ya cambió el minuto
         int timeout_ms = ((60 - (now.tv_sec % 60)) * 1000) + 500;
 
-        int ret = poll(&pfd, 1, timeout_ms); 
+        int ret = poll(&pfd, 1, timeout_ms);
 
-        if (ret == 0) 
+        if (ret == 0)
         {
             // ¡TIMEOUT! Ha pasado un minuto.
             wl_display_cancel_read(display);
@@ -566,7 +572,8 @@ int refesco(struct wl_surface *surf)
             if (errno == EINTR)
             {
                 wl_display_cancel_read(display);
-                if (configured) render_frame(surf);
+                if (configured)
+                    render_frame(surf);
                 continue;
             }
             wl_display_cancel_read(display);
