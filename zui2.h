@@ -134,7 +134,8 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
 
     // Formateamos HH:MM y la fecha (ej: 29 Abr)
     strftime(time_str, sizeof(time_str), "%H:%M", timeinfo);
-    strftime(date_str, sizeof(date_str), "%d %b", timeinfo);
+    strftime(date_str, sizeof(date_str), "%d %b %Y", timeinfo);
+    //strftime(date_str, sizeof(date_str), "%d %b", timeinfo);
 
     float sys_vol = GetSystemVolume() / 100.0f; // siempre leer sistema
     // Dentro de tu zui_render o donde leas el volumen:
@@ -198,7 +199,7 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
         paddingM = 20.0f;
         row_h = 30.0f;
         // Ajustamos start_y un poco para dejar sitio a la hora
-        start_y = y + 70;
+        start_y = y + 40;
 
         // =========================
         // 🕒 BLOQUE RELOJ (Encima del Slider)
@@ -206,14 +207,22 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
         // Usamos filas dinámicas para que se centren solas
         nk_layout_space_begin(ctx, NK_STATIC, 40, 3);
         nk_layout_space_push(ctx,
-                             nk_rect(paddingM, start_y-40, 200, 10));
+                             nk_rect(paddingM, start_y-40, win_width, 10));
         // nk_layout_row_dynamic(ctx, 20, 1);
-        nk_label(ctx, date_str, NK_TEXT_CENTERED);
+        char icoReloj[40]= " \uf017 ";
+        char icoCalendario[20]= "\uf073 ";
+        strcat(icoReloj, time_str);
+        strcat(icoReloj, " / ");
+        strcat(icoCalendario, date_str);
+        strcat(icoReloj, icoCalendario);
+                 
+        nk_label(ctx, icoReloj, NK_TEXT_LEFT);
         nk_layout_space_push(ctx,
-                             nk_rect(paddingM, start_y - 20, 200, 10));
+                             nk_rect(0, start_y - 20, win_width, 10));
         // nk_layout_row_dynamic(ctx, 35, 1);
         //  Aquí la hora en "grande"
-        nk_label(ctx, time_str, NK_TEXT_CENTERED);
+         // Agregamos el icono de reloj al final
+        //nk_label(ctx, icoReloj, NK_TEXT_CENTERED);
 
         // Pequeño respiro antes del volumen
         // nk_layout_row_dynamic(ctx, 10, 1);
@@ -224,17 +233,17 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
 
         // ICONO
         nk_layout_space_push(ctx,
-                             nk_rect(paddingM, start_y, icon_w, row_h * 2));
+                             nk_rect(paddingM, start_y-40, icon_w, row_h * 2));
         nk_label(ctx, "\uF028", NK_TEXT_CENTERED);
 
         // LABEL
         nk_layout_space_push(ctx,
-                             nk_rect(paddingM + icon_w, start_y, label_w, row_h * 2));
+                             nk_rect(paddingM + icon_w, start_y-40, label_w, row_h * 2));
         nk_label(ctx, "VOLUME", NK_TEXT_LEFT);
 
         // SLIDER
         nk_layout_space_push(ctx,
-                             nk_rect(paddingM + icon_w + label_w + 10, start_y, slider_w, row_h * 2));
+                             nk_rect(paddingM + icon_w + label_w + 10, start_y-40, slider_w, row_h * 2));
         if (nk_slider_float(ctx, 0.0f, &vol_value, 2.0f, 0.01f))
         {
             zui_set_volume(vol_value);
@@ -245,7 +254,7 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
         sprintf(buffer, "%d%%", (int)(vol_value * 100));
 
         nk_layout_space_push(ctx,
-                             nk_rect(win_width - paddingM - value_w, start_y, value_w, row_h * 2));
+                             nk_rect(win_width - paddingM - value_w, start_y-40, value_w, row_h * 2));
         nk_label(ctx, buffer, NK_TEXT_RIGHT);
 
         /*  // SLIDER 2
@@ -332,7 +341,7 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
 
         // --- CÁLCULO DE MEDIDAS ---
         float padding = 10.0f; // Un pelín menos de padding para que quepan bien
-        float btn_h = 40.0f;
+        float btn_h = 25.0f;
 
         // Dividimos el ancho entre 3, restando los 4 huecos de padding (izq, entre-1, entre-2, der)
         float btn_w_third = (win_width - (padding * 4)) / 3;
