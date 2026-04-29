@@ -1,22 +1,15 @@
 #define _GNU_SOURCE
-#include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <signal.h>
-#include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
 #include <poll.h>
 #include <sys/mman.h>
 #include <wayland-client.h>
 #include <cairo.h>
+#include <stdbool.h>
 #include "wlr-layer-shell-unstable-v1.h"
-#include <pthread.h>
-#include <unistd.h>
-#include <errno.h>
-#include <poll.h>
-#include <sys/wait.h>    
+
 // --- CONFIGURACIÓN NUKLEAR ---
 #define NK_INCLUDE_FIXED_TYPES
 #define NK_INCLUDE_STANDARD_IO
@@ -52,57 +45,12 @@ struct zwlr_layer_shell_v1 *layer_shell;
 struct wl_seat *seat;
 struct wl_buffer *buffer;
 struct nk_context ctx;
-struct wl_surface *surf;
-bool configured = false;
-static int frame_count = 0;
-uint32_t *shm_data_global;
-static  int retFlag=0;
-static bool needs_redraw = false;
 
+uint32_t *shm_data_global;
 int win_width = 300;
 int win_height = 550;
 int cur_x = 0, cur_y = 0;
-void handle_vol_signal(int sig) {
-        needs_redraw = true;   // ← seguro, solo escribe un bool
-
-    // No hace falta escribir nada aquí. 
-    // El simple hecho de que esta función exista evita que el programa muera.
-}
-int refesco(struct wl_surface *surf);
-int wayinit(int win_width, int win_height, int *retFlag);
-void start_zui_monitor() {
-    pid_t pid = fork();
-    if (pid < 0) return;
-
-    if (pid == 0) {
-        // HIJO: Solo vigila y avisa
-        signal(SIGUSR1, SIG_IGN); 
-        FILE *fp = popen("pactl subscribe", "r");
-        if (!fp) exit(1);
-
-        char linea[1024];
-        while (fgets(linea, sizeof(linea), fp) != NULL) {
-            if (strstr(linea, "change") && strstr(linea, "sink")) {
-                    printf("ZaramagaOS: Volumen cambiado, avisando al padre...\n");
-                // EL CODAZO: Avisa al padre para que se despierte
-                kill(getppid(), SIGUSR1); 
-                usleep(500000);
-            }
-        }
-        pclose(fp);
-        exit(0); 
-    }
-    // PADRE: Continúa su ejecución normal
-}
-/* 
-
-void limit_fps(int fps)
-{
-    struct timespec req;
-    req.tv_sec = 0;
-    req.tv_nsec = 1000000000L / fps;
-    nanosleep(&req, NULL);
-} */
+static bool needs_redraw = false;
 /*
 void draw_logo_shm(cairo_t *cr, int x, int y)
 {
@@ -354,15 +302,14 @@ static const struct wl_pointer_listener pointer_listener = {
     .frame = (void *)noop,
     .axis_source = (void *)noop,
     .axis_stop = (void *)noop,
-    .axis_discrete = (void *)noop};static void layer_surface_configure(void *data, struct zwlr_layer_surface_v1 *ls, uint32_t serial, uint32_t width, uint32_t height)
+    .axis_discrete = (void *)noop};
+
+static void layer_surface_configure(void *data, struct zwlr_layer_surface_v1 *ls, uint32_t serial, uint32_t width, uint32_t height)
 {
     zwlr_layer_surface_v1_ack_configure(ls, serial);
     win_width = width;
     win_height = height;
-    needs_redraw = true; 
-    // ESTO ES VITAL: Sin esto el padre nunca dibujará
-    configured = true; 
-    
+    needs_redraw = true;
     render_frame((struct wl_surface *)data);
 }
 
@@ -380,7 +327,6 @@ static void global_registry_handler(void *data, struct wl_registry *reg, uint32_
 
 int main(int argc, char **argv)
 {
-
     int win_width = 300;
     int win_height = 1080;
 
@@ -389,56 +335,49 @@ int main(int argc, char **argv)
         win_width = atoi(argv[1]);
         win_height = atoi(argv[2]);
     }
-    signal(SIGUSR1, handle_vol_signal);
 
-    // --- 2. LANZAR EL MONITOR (FORK) ---
-    
-    //monitor_pactl_simple(); // Iniciamos el monitor de volumen en un proceso aparte
-    start_zui_monitor(); // Iniciamos el monitor de volumen en un proceso aparte
-    // --- CONEXIÓN WAYLAND ---
-    int retVal = wayinit(win_width, win_height, &retFlag);
-    if (retFlag == 1)
-        return retVal;
-
-    // --- EL BUCLE DE ACERO (30 FPS) ---
-    printf("ZawayinitramagaOS: Motor de refresco sólido iniciado.\n");
-
-    int frame_count = refesco(surf);
-
-    return 0;
-}
-int wayinit(int win_width, int win_height, int *retFlag)
-{
-    *retFlag = 1;
     display = wl_display_connect(NULL);
-    if (!display)
-        return 1;
-
     struct wl_registry *reg = wl_display_get_registry(display);
     static const struct wl_registry_listener rl = {global_registry_handler, NULL};
     wl_registry_add_listener(reg, &rl, NULL);
     wl_display_roundtrip(display);
 
-    // --- INICIALIZAR NUKLEAR & FUENTES ---
+    // 1. INICIALIZAMOS EL CONTEXTO (SOLO UNA VEZ)
     nk_init_default(&ctx, 0);
-    zui_set_style(&ctx);
+    zui_set_style(&ctx); // Aplicamos tus colores de ZaramagaOS
 
+    // 2. CONFIGURAMOS EL ATLAS DE FUENTES
     struct nk_font_atlas atlas;
     int w, h;
     nk_font_atlas_init_default(&atlas);
     nk_font_atlas_begin(&atlas);
+
+    // Intentamos cargar la Nerd Font
     struct nk_font *jetbrains = nk_font_atlas_add_from_file(&atlas, "JetBrainsMonoNerdFont-Regular.ttf", 18, NULL);
-    nk_font_atlas_bake(&atlas, &w, &h, NK_FONT_ATLAS_ALPHA8);
+
+    // Cocinamos la fuente (Bake)
+    const void *image = nk_font_atlas_bake(&atlas, &w, &h, NK_FONT_ATLAS_ALPHA8);
+
+    // Finalizamos el atlas. nk_handle_id(0) es suficiente para SHM/Cairo
     nk_font_atlas_end(&atlas, nk_handle_id(0), NULL);
 
+    // 3. ASIGNAMOS LA FUENTE SEGÚN EL RESULTADO
     if (jetbrains)
     {
+        printf("ZaramagaOS: JetBrains Nerd Font cargada correctamente.\n");
         nk_style_set_font(&ctx, &jetbrains->handle);
     }
+    else
+    {
+        printf("ZaramagaOS: No se encontró el .ttf, usando fuente por defecto.\n");
+        // Solo si falla la carga usamos el fallback manual
+        static struct nk_user_font fallback_font;
+        fallback_font.height = 18;
+        fallback_font.width = text_get_width; // Asegúrate de que text_get_width esté definida arriba
+        nk_style_set_font(&ctx, &fallback_font);
+    }
 
-    // --- CONFIGURAR SUPERFICIE & LAYER SHELL ---
-    surf = wl_compositor_create_surface(compositor);
-
+    struct wl_surface *surf = wl_compositor_create_surface(compositor);
     int size = win_width * win_height * 4;
     int fd = memfd_create("shm", MFD_CLOEXEC);
     ftruncate(fd, size);
@@ -446,11 +385,12 @@ int wayinit(int win_width, int win_height, int *retFlag)
     struct wl_shm_pool *pool = wl_shm_create_pool(shm, fd, size);
     buffer = wl_shm_pool_create_buffer(pool, 0, win_width, win_height, win_width * 4, WL_SHM_FORMAT_ARGB8888);
     close(fd);
-
+    // ojo margenes
     struct zwlr_layer_surface_v1 *ls = zwlr_layer_shell_v1_get_layer_surface(layer_shell, surf, NULL, ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY, "dock");
     static const struct zwlr_layer_surface_v1_listener lsl = {layer_surface_configure, (void *)exit};
     zwlr_layer_surface_v1_set_anchor(ls, ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM);
     zwlr_layer_surface_v1_set_size(ls, win_width, 0);
+    zwlr_layer_surface_v1_set_margin(ls, 0, 0, 0, 0); // mas o menos el margen del logo, ajusta a tu gusto
     zwlr_layer_surface_v1_add_listener(ls, &lsl, surf);
 
     if (seat)
@@ -460,54 +400,13 @@ int wayinit(int win_width, int win_height, int *retFlag)
     }
 
     wl_surface_commit(surf);
-    //render_frame(surf);
-    *retFlag = 0;
-    return 0;
-}
-
-
-int refesco(struct wl_surface *surf) {
-    printf("ZaramagaOS: Motor de refresco optimizado (CPU 0%%).\n");
-    fflush(stdout);
-
-    while (1) {
-        // 1. Preparar Wayland para leer eventos
-        while (wl_display_prepare_read(display) != 0) {
-            wl_display_dispatch_pending(display);
+    
+    
+        // 1. Despacha eventos que ya están en la cola
+        while (wl_display_dispatch(display) != -1)
+        {
+            // Aquí no hace falta nada, el renderizado se dispara por los eventos
+            // o por el frame_callback que tengas configurado.
         }
-        wl_display_flush(display);
-
-        // 2. Dormir el proceso hasta que pase algo (Evento Wayland o Señal SIGUSR1)
-        // La estructura es struct pollfd (sin guion bajo)
-        struct pollfd pfd = { .fd = wl_display_get_fd(display), .events = POLLIN };
-        
-        int ret = poll(&pfd, 1, -1); // Espera infinita sin gastar CPU
-
-        if (ret < 0) {
-            if (errno == EINTR) {
-                // ¡SEÑAL DETECTADA! (El hijo avisó del volumen)
-                wl_display_cancel_read(display);
-                if (configured) render_frame(surf);
-                continue;
-            }
-            // Error real
-            wl_display_cancel_read(display);
-            break;
-        }
-
-        // 3. Si hay datos en el socket de Wayland, leerlos
-        if (pfd.revents & POLLIN) {
-            wl_display_read_events(display);
-        } else {
-            wl_display_cancel_read(display);
-        }
-
-        // 4. Procesar lo que hayamos leído y dibujar
-        wl_display_dispatch_pending(display);
-         if (configured && needs_redraw) {
-            render_frame(surf);
-            needs_redraw = false;
-        }
+        return 0;
     }
-    return 0;
-}

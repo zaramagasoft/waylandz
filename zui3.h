@@ -16,7 +16,7 @@ static struct nk_color dark_bg;
 static struct nk_color phosphor_green;
 static struct nk_color dark_green;
 
-static float vol_value = 0.6f;
+extern float vol_value;
 // static float bright_value = 0.8f;
 
 // 🔊 VOLUMEN
@@ -31,6 +31,7 @@ static void zui_set_volume(float v)
 // --- LÓGICA DE AUDIO (ABSTRACCIÓN) ---
 int GetSystemVolume()
 {
+    printf("yo soy GetSystemVolume");
     int volume = 0;
     // Este comando de pactl es estándar y muy rápido
     FILE *fp = popen("pactl get-sink-volume @DEFAULT_SINK@ | grep -Po '\\d+(?=%)' | head -n 1", "r");
@@ -121,27 +122,21 @@ void zui_set_style(struct nk_context *ctx)
 }
 void zui_render(struct nk_context *ctx, int win_width, int win_height)
 {
-    printf("zui_render");
-    fflush(stdout); // Esto te ayudará a ver cuándo se llama a zui_render
     static float last_sys_vol = -1.0f;
 
-    float sys_vol = GetSystemVolume() / 100.0f; // siempre leer sistema
+   /*  float sys_vol = GetSystemVolume() / 100.0f; // siempre leer sistema
     // Dentro de tu zui_render o donde leas el volumen:
     static uint32_t frame_count = 0;
-    frame_count++;
+    frame_count++; */
 
     // SOLO leemos el volumen del sistema cada 30 frames (aprox. 2 veces por segundo)
-    /* if (frame_count % 60 == 0)
-    {
-        printf("Actualizando volumen del sistema...%d%%\n", frame_count);
-        vol_value = GetSystemVolume() / 100.0f;
-    } */
-    float v = vol_value;
+   
+
     // --- ZONAS ---
     float logo_h = win_height * 0.15f;
     float footer_h = win_height * 0.20f;
     float middle_h = win_height - logo_h - footer_h;
-    vol_value = GetSystemVolume() / 100.0f; // Actualiza el volumen cada frame
+    //vol_value = GetSystemVolume() / 100.0f; // Actualiza el volumen cada frame
 
     if (nk_begin(ctx, "ZaramagaDock",
                  nk_rect(0, 0, (float)win_width, (float)win_height),
