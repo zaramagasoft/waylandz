@@ -307,29 +307,88 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
 
         // Iniciamos el layout para 3 widgets
         nk_layout_space_begin(ctx, NK_STATIC, footer_h, 3);
+        /*
+                // 1. BOTÓN REBOOT (Izquierda)
+                nk_layout_space_push(ctx, nk_rect(padding, y_btn, btn_w_third, btn_h));
+                if (nk_button_label(ctx, "\uf01e"))
+                {
+                    // system("reboot");
+                    show_confirm = 1;
+                    // exit(0);
+                }
 
-        // 1. BOTÓN REBOOT (Izquierda)
-        nk_layout_space_push(ctx, nk_rect(padding, y_btn, btn_w_third, btn_h));
-        if (nk_button_label(ctx, "\uf01e"))
+                // 2. BOTÓN EXIT / PUERTA (Centro)
+                nk_layout_space_push(ctx, nk_rect(padding * 2 + btn_w_third, y_btn, btn_w_third, btn_h));
+                if (nk_button_label(ctx, "\uf08b"))
+                {
+                    kill(-getpgrp(), SIGTERM);
+                    exit(0);
+                }
+
+                // 3. BOTÓN POWER OFF (Derecha)
+                nk_layout_space_push(ctx, nk_rect(padding * 3 + btn_w_third * 2, y_btn, btn_w_third, btn_h));
+                if (nk_button_label(ctx, "\uf011"))
+                {
+                    // system("poweroff");
+                    show_confirm = 2;
+                    // exit(0);
+                }
+
+                nk_layout_space_end(ctx);
+                */
+        // Definimos el mismo espacio de 3 huecos para ambos estados
+        nk_layout_space_begin(ctx, NK_STATIC, btn_h, 3);
+        int semaforo=0;
+
+        if (show_confirm == 0)
         {
-            system("reboot");
-            exit(0);
+            // --- MODO NORMAL (Los 3 iconos) ---
+
+            // REBOOT
+            nk_layout_space_push(ctx, nk_rect(padding, 0, btn_w_third, btn_h));
+            if (nk_button_label(ctx, "\uf01e"))
+                show_confirm = 1;
+
+            // EXIT
+            nk_layout_space_push(ctx, nk_rect(padding * 2 + btn_w_third, 0, btn_w_third, btn_h));
+            if (nk_button_label(ctx, "\uf08b"))
+            {
+                kill(-getpgrp(), SIGTERM);
+                exit(0);
+            }
+
+            // POWER
+            nk_layout_space_push(ctx, nk_rect(padding * 3 + btn_w_third * 2, 0, btn_w_third, btn_h));
+            if (nk_button_label(ctx, "\uf011"))
+                show_confirm = 2;
         }
-
-        // 2. BOTÓN EXIT / PUERTA (Centro)
-        nk_layout_space_push(ctx, nk_rect(padding * 2 + btn_w_third, y_btn, btn_w_third, btn_h));
-        if (nk_button_label(ctx, "\uf08b"))
+        else
         {
-            kill(-getpgrp(), SIGTERM);
-            exit(0);
-        }
+            // --- MODO CONFIRMACIÓN (Ocupamos el mismo espacio pero con 2 botones anchos) ---
+            // Calculamos un ancho para que dos botones ocupen lo que antes ocupaban tres
+            float btn_w_confirm = (win_width - (padding * 3)) / 2;
 
-        // 3. BOTÓN POWER OFF (Derecha)
-        nk_layout_space_push(ctx, nk_rect(padding * 3 + btn_w_third * 2, y_btn, btn_w_third, btn_h));
-        if (nk_button_label(ctx, "\uf011"))
-        {
-            system("poweroff");
-            exit(0);
+            // BOTÓN SÍ (A la izquierda)
+            nk_layout_space_push(ctx, nk_rect(padding, 0, btn_w_confirm, btn_h));
+            char *msg = (show_confirm == 1) ? "pc-REBOOT\uf00c" : "pc-OFF\uf00c";
+            if (nk_button_label(ctx, msg))
+            {
+                if (show_confirm == 1)
+                    system("reboot");
+                else
+                    system("poweroff");
+                exit(0);
+            }
+
+            // BOTÓN CANCELAR (A la derecha)
+            nk_layout_space_push(ctx, nk_rect(padding * 2 + btn_w_confirm, 0, btn_w_confirm, btn_h));
+            if (nk_button_label(ctx, "Cancel\uf00d"))
+            {
+                show_confirm = 0;
+                // Limpiamos el input para evitar que el clic "atraviese" al modo normal
+                nk_input_begin(ctx);
+                nk_input_end(ctx);
+            }
         }
 
         nk_layout_space_end(ctx);
@@ -337,4 +396,5 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
 
     nk_end(ctx);
 }
+
 #endif

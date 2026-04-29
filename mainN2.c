@@ -57,7 +57,9 @@ bool configured = false;
 static int frame_count = 0;
 uint32_t *shm_data_global;
 static int retFlag = 0;
-static bool needs_redraw = false; //ojo a estudiar bien esto, es la clave para no hacer render cada vez que recibimos un configure, sino solo cuando realmente haya que redibujar
+static bool needs_redraw = false;
+char time_str[10];
+char date_str[20]; //ojo a estudiar bien esto, es la clave para no hacer render cada vez que recibimos un configure, sino solo cuando realmente haya que redibujar
 pid_t pid = -1; // Variable global al principio del archivo
 int win_width = 300;
 int win_height = 550;
