@@ -476,7 +476,7 @@ int wayinit(int win_width, int win_height, int *retFlag)
     return 0;
 }
 
-int refesco(struct wl_surface *surf)
+/* int refesco(struct wl_surface *surf)
 {
     printf("ZaramagaOS: Motor de refresco optimizado (CPU 0%%).\n");
     fflush(stdout);
@@ -522,6 +522,65 @@ int refesco(struct wl_surface *surf)
         }
 
         // 4. Procesar lo que hayamos leído y dibujar
+        wl_display_dispatch_pending(display);
+        if (configured && needs_redraw)
+        {
+            render_frame(surf);
+            needs_redraw = false;
+        }
+    }
+    return 0;
+} */
+int refesco(struct wl_surface *surf)
+{
+    printf("ZaramagaOS: Motor de refresco optimizado (CPU 0%%).\n");
+    fflush(stdout);
+
+    while (1)
+    {
+        while (wl_display_prepare_read(display) != 0)
+        {
+            wl_display_dispatch_pending(display);
+        }
+        wl_display_flush(display);
+
+        struct pollfd pfd = {.fd = wl_display_get_fd(display), .events = POLLIN};
+
+        // --- CAMBIO AQUÍ: Cálculo del Timeout para el Reloj ---
+        struct timespec now;
+        clock_gettime(CLOCK_REALTIME, &now);
+        // Despertar cada minuto (60s - segundos actuales)
+        // Añadimos 500ms de margen para asegurar que el sistema ya cambió el minuto
+        int timeout_ms = ((60 - (now.tv_sec % 60)) * 1000) + 500;
+
+        int ret = poll(&pfd, 1, timeout_ms); 
+
+        if (ret == 0) 
+        {
+            // ¡TIMEOUT! Ha pasado un minuto.
+            wl_display_cancel_read(display);
+            needs_redraw = true; // Forzamos el render para actualizar la hora
+        }
+        else if (ret < 0)
+        {
+            if (errno == EINTR)
+            {
+                wl_display_cancel_read(display);
+                if (configured) render_frame(surf);
+                continue;
+            }
+            wl_display_cancel_read(display);
+            break;
+        }
+        else if (pfd.revents & POLLIN)
+        {
+            wl_display_read_events(display);
+        }
+        else
+        {
+            wl_display_cancel_read(display);
+        }
+
         wl_display_dispatch_pending(display);
         if (configured && needs_redraw)
         {
