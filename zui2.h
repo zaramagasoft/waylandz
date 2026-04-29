@@ -6,6 +6,8 @@
 #include <stdio.h>
 
 // Variables de estado
+char time_str[10];
+char date_str[20];
 // static float vol_value = 0.6f;
 // static int brightness = 80;
 // static int current_resolution = 0;
@@ -124,6 +126,15 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
     printf("zui_render");
     fflush(stdout); // Esto te ayudará a ver cuándo se llama a zui_render
     static float last_sys_vol = -1.0f;
+    // --- LÓGICA DE TIEMPO ---
+    time_t rawtime;
+    struct tm *timeinfo;
+    time(&rawtime);
+    timeinfo = localtime(&rawtime);
+
+    // Formateamos HH:MM y la fecha (ej: 29 Abr)
+    strftime(time_str, sizeof(time_str), "%H:%M", timeinfo);
+    strftime(date_str, sizeof(date_str), "%d %b", timeinfo);
 
     float sys_vol = GetSystemVolume() / 100.0f; // siempre leer sistema
     // Dentro de tu zui_render o donde leas el volumen:
@@ -183,6 +194,30 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
         float slider_w = win_width - (paddingM * 2 + icon_w + label_w + value_w + 20);
         // float paddingM = 20.0f;
         float slider_h = 55.0f;
+
+        paddingM = 20.0f;
+        row_h = 30.0f;
+        // Ajustamos start_y un poco para dejar sitio a la hora
+        start_y = y + 70;
+
+        // =========================
+        // 🕒 BLOQUE RELOJ (Encima del Slider)
+        // =========================
+        // Usamos filas dinámicas para que se centren solas
+        nk_layout_space_begin(ctx, NK_STATIC, 40, 3);
+        nk_layout_space_push(ctx,
+                             nk_rect(paddingM, start_y-40, 200, 10));
+        // nk_layout_row_dynamic(ctx, 20, 1);
+        nk_label(ctx, date_str, NK_TEXT_CENTERED);
+        nk_layout_space_push(ctx,
+                             nk_rect(paddingM, start_y - 20, 200, 10));
+        // nk_layout_row_dynamic(ctx, 35, 1);
+        //  Aquí la hora en "grande"
+        nk_label(ctx, time_str, NK_TEXT_CENTERED);
+
+        // Pequeño respiro antes del volumen
+        // nk_layout_row_dynamic(ctx, 10, 1);
+        //nk_spacing(ctx, 1);
 
         // SLIDER 1
         nk_layout_space_begin(ctx, NK_STATIC, middle_h, 8);
@@ -338,7 +373,7 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
                 */
         // Definimos el mismo espacio de 3 huecos para ambos estados
         nk_layout_space_begin(ctx, NK_STATIC, btn_h, 3);
-        int semaforo=0;
+        int semaforo = 0;
 
         if (show_confirm == 0)
         {
