@@ -10,7 +10,7 @@
 // static int brightness = 80;
 // static int current_resolution = 0;
 // static const char *res_options[] = {"1920x1080", "1280x720", "800x600"};
-
+static int show_confirm = 0; // 0: nada, 1: reboot, 2: poweroff
 // Definimos los colores aquí arriba para que todas las funciones los vean
 static struct nk_color dark_bg;
 static struct nk_color phosphor_green;
@@ -253,42 +253,84 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
 
                      nk_rgba(40, 40, 40, 20)); // 👈 ALPHA
 
-        // --- BOTONES ---
-        float padding = 15.0f;
+        /*  // --- BOTONES ---
+         float padding = 15.0f;
+         float btn_h = 40.0f;
+
+         float btn_w_full = win_width - (padding * 2);
+         float btn_w_half = (win_width - (padding * 3)) / 2;
+
+         // centrado vertical dentro del footer
+         float total_h = (btn_h * 2) + 10;
+         float y_btn = y + (footer_h - total_h) / 2;
+
+         nk_layout_space_begin(ctx, NK_STATIC, footer_h, 3);
+
+         // EXIT
+         nk_layout_space_push(ctx,
+                              nk_rect(padding, y_btn, btn_w_full, btn_h));
+
+         if (nk_button_label(ctx, "\uf08b"))
+         {
+             // Aquí la limpieza que hemos hablado
+             kill(-getpgrp(), SIGTERM);
+             exit(0);
+         }
+
+         // REBOOT / OFF
+         y_btn += btn_h + 10;
+
+         nk_layout_space_push(ctx,
+                              nk_rect(padding, y_btn, btn_w_half, btn_h));
+
+         nk_button_label(ctx, "\uf01e");
+
+         nk_layout_space_push(ctx,
+                              nk_rect(padding * 2 + btn_w_half, y_btn, btn_w_half, btn_h));
+
+         nk_button_label(ctx, "\uf011");
+
+         nk_layout_space_end(ctx); */
+        // =========================
+        // 🔴 FOOTER ZONE (UNA FILA - 3 BOTONES)
+        // =========================
+
+        // --- CÁLCULO DE MEDIDAS ---
+        float padding = 10.0f; // Un pelín menos de padding para que quepan bien
         float btn_h = 40.0f;
 
-        float btn_w_full = win_width - (padding * 2);
-        float btn_w_half = (win_width - (padding * 3)) / 2;
+        // Dividimos el ancho entre 3, restando los 4 huecos de padding (izq, entre-1, entre-2, der)
+        float btn_w_third = (win_width - (padding * 4)) / 3;
 
-        // centrado vertical dentro del footer
-        float total_h = (btn_h * 2) + 10;
-        float y_btn = y + (footer_h - total_h) / 2;
+        // Centrado vertical en el footer (una sola fila)
+        float y_btn = y + (footer_h - btn_h) / 2;
 
+        // Iniciamos el layout para 3 widgets
         nk_layout_space_begin(ctx, NK_STATIC, footer_h, 3);
 
-        // EXIT
-        nk_layout_space_push(ctx,
-                             nk_rect(padding, y_btn, btn_w_full, btn_h));
-
-        if (nk_button_label(ctx, "\uf08b salida"))
+        // 1. BOTÓN REBOOT (Izquierda)
+        nk_layout_space_push(ctx, nk_rect(padding, y_btn, btn_w_third, btn_h));
+        if (nk_button_label(ctx, "\uf01e"))
         {
-            // Aquí la limpieza que hemos hablado
+            system("reboot");
+            exit(0);
+        }
+
+        // 2. BOTÓN EXIT / PUERTA (Centro)
+        nk_layout_space_push(ctx, nk_rect(padding * 2 + btn_w_third, y_btn, btn_w_third, btn_h));
+        if (nk_button_label(ctx, "\uf08b"))
+        {
             kill(-getpgrp(), SIGTERM);
             exit(0);
         }
 
-        // REBOOT / OFF
-        y_btn += btn_h + 10;
-
-        nk_layout_space_push(ctx,
-                             nk_rect(padding, y_btn, btn_w_half, btn_h));
-
-        nk_button_label(ctx, "REBOOT");
-
-        nk_layout_space_push(ctx,
-                             nk_rect(padding * 2 + btn_w_half, y_btn, btn_w_half, btn_h));
-
-        nk_button_label(ctx, "OFF");
+        // 3. BOTÓN POWER OFF (Derecha)
+        nk_layout_space_push(ctx, nk_rect(padding * 3 + btn_w_third * 2, y_btn, btn_w_third, btn_h));
+        if (nk_button_label(ctx, "\uf011"))
+        {
+            system("poweroff");
+            exit(0);
+        }
 
         nk_layout_space_end(ctx);
     }
