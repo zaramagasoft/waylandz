@@ -1,8 +1,4 @@
-gcc rl.c -o zdock \
-    -I /home/alb/waylandz/raylib/src \
-    -L /home/alb/waylandz/raylib/build \
-    -lraylib -lwayland-client -lwayland-cursor -lwayland-egl -lGLESv2 -lxkbcommon -lm -lpthread -ldl \
-    -Wl,-rpath,/home/alb/waylandz/raylib/build
+gcc mainN2.c wlr-layer-shell-unstable-v1.c xdg-shell.c -o zmenun22     $(pkg-config --cflags --libs wayland-client cairo)     -lm -O2
 
 gcc mainN3.c wlr-layer-shell-unstable-v1.c xdg-shell.c -o zmenun3 \
 $(pkg-config --cflags --libs wayland-client cairo) \
