@@ -270,8 +270,10 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
         nk_layout_space_push(ctx,
                              nk_rect(padding, y_btn, btn_w_full, btn_h));
 
-        if (nk_button_label(ctx, "[ EXIT ]"))
+        if (nk_button_label(ctx, "\uf08b salida"))
         {
+            // Aquí la limpieza que hemos hablado
+            kill(-getpgrp(), SIGTERM);
             exit(0);
         }
 

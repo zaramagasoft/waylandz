@@ -16,7 +16,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <poll.h>
-#include <sys/wait.h>    
+#include <sys/wait.h>
 // --- CONFIGURACIÓN NUKLEAR ---
 #define NK_INCLUDE_FIXED_TYPES
 #define NK_INCLUDE_STANDARD_IO
@@ -56,45 +56,54 @@ struct wl_surface *surf;
 bool configured = false;
 static int frame_count = 0;
 uint32_t *shm_data_global;
-static  int retFlag=0;
-static bool needs_redraw = false;
-
+static int retFlag = 0;
+static bool needs_redraw = false; //ojo a estudiar bien esto, es la clave para no hacer render cada vez que recibimos un configure, sino solo cuando realmente haya que redibujar
+pid_t pid = -1; // Variable global al principio del archivo
 int win_width = 300;
 int win_height = 550;
 int cur_x = 0, cur_y = 0;
-void handle_vol_signal(int sig) {
-        needs_redraw = true;   // ← seguro, solo escribe un bool
+void handle_vol_signal(int sig)
+{
+    needs_redraw = true; // ← seguro, solo escribe un bool
 
-    // No hace falta escribir nada aquí. 
+    // No hace falta escribir nada aquí.
     // El simple hecho de que esta función exista evita que el programa muera.
 }
 int refesco(struct wl_surface *surf);
 int wayinit(int win_width, int win_height, int *retFlag);
-void start_zui_monitor() {
-    pid_t pid = fork();
-    if (pid < 0) return;
+void start_zui_monitor()
+{
+    pid = fork();
+    if (pid < 0)
+        return;
 
-    if (pid == 0) {
+    if (pid == 0)
+    {
+        #include <sys/prctl.h>
+        prctl(PR_SET_PDEATHSIG, SIGTERM);
         // HIJO: Solo vigila y avisa
-        signal(SIGUSR1, SIG_IGN); 
+        signal(SIGUSR1, SIG_IGN);
         FILE *fp = popen("pactl subscribe", "r");
-        if (!fp) exit(1);
+        if (!fp)
+            exit(1);
 
         char linea[1024];
-        while (fgets(linea, sizeof(linea), fp) != NULL) {
-            if (strstr(linea, "change") && strstr(linea, "sink")) {
-                    printf("ZaramagaOS: Volumen cambiado, avisando al padre...\n");
+        while (fgets(linea, sizeof(linea), fp) != NULL)
+        {
+            if (strstr(linea, "change") && strstr(linea, "sink"))
+            {
+                printf("ZaramagaOS: Volumen cambiado, avisando al padre...\n");
                 // EL CODAZO: Avisa al padre para que se despierte
-                kill(getppid(), SIGUSR1); 
+                kill(getppid(), SIGUSR1);
                 usleep(500000);
             }
         }
         pclose(fp);
-        exit(0); 
+        exit(0);
     }
     // PADRE: Continúa su ejecución normal
 }
-/* 
+/*
 
 void limit_fps(int fps)
 {
@@ -296,7 +305,7 @@ void draw_nuklear_to_cairo(struct nk_context *ctx, cairo_t *cr)
 static void render_frame(struct wl_surface *surface)
 {
     zui_render(&ctx, win_width, win_height);
-
+    needs_redraw = false; // 🔥 IMPORTANTE: Solo renderizamos cuando realmente haya que hacerlo
     cairo_surface_t *c_surf = cairo_image_surface_create_for_data(
         (unsigned char *)shm_data_global, CAIRO_FORMAT_ARGB32, win_width, win_height, win_width * 4);
     cairo_t *cr = cairo_create(c_surf);
@@ -354,15 +363,16 @@ static const struct wl_pointer_listener pointer_listener = {
     .frame = (void *)noop,
     .axis_source = (void *)noop,
     .axis_stop = (void *)noop,
-    .axis_discrete = (void *)noop};static void layer_surface_configure(void *data, struct zwlr_layer_surface_v1 *ls, uint32_t serial, uint32_t width, uint32_t height)
+    .axis_discrete = (void *)noop};
+static void layer_surface_configure(void *data, struct zwlr_layer_surface_v1 *ls, uint32_t serial, uint32_t width, uint32_t height)
 {
     zwlr_layer_surface_v1_ack_configure(ls, serial);
     win_width = width;
     win_height = height;
-    needs_redraw = true; 
+    needs_redraw = true;
     // ESTO ES VITAL: Sin esto el padre nunca dibujará
-    configured = true; 
-    
+    configured = true;
+
     render_frame((struct wl_surface *)data);
 }
 
@@ -392,8 +402,8 @@ int main(int argc, char **argv)
     signal(SIGUSR1, handle_vol_signal);
 
     // --- 2. LANZAR EL MONITOR (FORK) ---
-    
-    //monitor_pactl_simple(); // Iniciamos el monitor de volumen en un proceso aparte
+
+    // monitor_pactl_simple(); // Iniciamos el monitor de volumen en un proceso aparte
     start_zui_monitor(); // Iniciamos el monitor de volumen en un proceso aparte
     // --- CONEXIÓN WAYLAND ---
     int retVal = wayinit(win_width, win_height, &retFlag);
@@ -460,34 +470,39 @@ int wayinit(int win_width, int win_height, int *retFlag)
     }
 
     wl_surface_commit(surf);
-    //render_frame(surf);
+    // render_frame(surf);
     *retFlag = 0;
     return 0;
 }
 
-
-int refesco(struct wl_surface *surf) {
+int refesco(struct wl_surface *surf)
+{
     printf("ZaramagaOS: Motor de refresco optimizado (CPU 0%%).\n");
     fflush(stdout);
 
-    while (1) {
+    while (1)
+    {
         // 1. Preparar Wayland para leer eventos
-        while (wl_display_prepare_read(display) != 0) {
+        while (wl_display_prepare_read(display) != 0)
+        {
             wl_display_dispatch_pending(display);
         }
         wl_display_flush(display);
 
         // 2. Dormir el proceso hasta que pase algo (Evento Wayland o Señal SIGUSR1)
         // La estructura es struct pollfd (sin guion bajo)
-        struct pollfd pfd = { .fd = wl_display_get_fd(display), .events = POLLIN };
-        
+        struct pollfd pfd = {.fd = wl_display_get_fd(display), .events = POLLIN};
+
         int ret = poll(&pfd, 1, -1); // Espera infinita sin gastar CPU
 
-        if (ret < 0) {
-            if (errno == EINTR) {
+        if (ret < 0)
+        {
+            if (errno == EINTR)
+            {
                 // ¡SEÑAL DETECTADA! (El hijo avisó del volumen)
                 wl_display_cancel_read(display);
-                if (configured) render_frame(surf);
+                if (configured)
+                    render_frame(surf);
                 continue;
             }
             // Error real
@@ -496,15 +511,19 @@ int refesco(struct wl_surface *surf) {
         }
 
         // 3. Si hay datos en el socket de Wayland, leerlos
-        if (pfd.revents & POLLIN) {
+        if (pfd.revents & POLLIN)
+        {
             wl_display_read_events(display);
-        } else {
+        }
+        else
+        {
             wl_display_cancel_read(display);
         }
 
         // 4. Procesar lo que hayamos leído y dibujar
         wl_display_dispatch_pending(display);
-         if (configured && needs_redraw) {
+        if (configured && needs_redraw)
+        {
             render_frame(surf);
             needs_redraw = false;
         }
