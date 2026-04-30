@@ -1,14 +1,28 @@
 gcc mainN2.c wlr-layer-shell-unstable-v1.c xdg-shell.c -o zmenun22     $(pkg-config --cflags --libs wayland-client cairo)     -lm -O2
 
 gcc test.c metricas.c -o tmetrics
-
-//TODO ajustar zmenuna resolucion minima vrtical 768 y maxima 4k
+//ToDo cockpit y menuos
+//TODO ajustar zmenun22 a resolucion minima vrtical 768 y maxima 4k
 
 gcc mainN3.c wlr-layer-shell-unstable-v1.c xdg-shell.c -o zmenun3 \
 $(pkg-config --cflags --libs wayland-client cairo) \
 -lpthread -lm -O2
+//////////////fuentes///////////////
+sudo cp 3270NerdFontPropo-Regular.ttf /usr/share/fonts/TTF/
+sudo cp /ruta/a/tu/fuente.ttf /usr/share/fonts/TTF/
+sudo fc-cache -fv //////////recargar 
+fc-list | grep -i nombre_fuente//// y eso en cairo
+ver linea 
+fc-list | grep -i nombre_fuente
+cairo_select_font_face(cr, "JetBrainsMono Nerd Font Mono",
+                                   CAIRO_FONT_SLANT_NORMAL,
+                                   CAIRO_FONT_WEIGHT_NORMAL);
 
-
+3270 Nerd Font Propo
+cairo_select_font_face(cr, "3270 Nerd Font Propo",
+                                   CAIRO_FONT_SLANT_NORMAL,
+                                   CAIRO_FONT_WEIGHT_NORMAL);                      
+/////////                                               
 gcc mainN3.c wlr-layer-shell-unstable-v1.c xdg-shell.c -o zmenun3     $(pkg-config --cflags --libs libsystemd wayland-client cairo)     -lm -O2
 
 gcc mainN.c wlr-layer-shell-unstable-v1.c xdg-shell.c -o zmenu_nuklear     $(pkg-config --cflags --libs wayland-client wayland-cursor cairo)     -lm -O3

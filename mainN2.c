@@ -255,7 +255,7 @@ void draw_nuklear_to_cairo(struct nk_context *ctx, cairo_t *cr)
                                   t->foreground.a / 255.0);
 
             // 👇 AQUÍ eliges la fuente
-            cairo_select_font_face(cr, "JetBrainsMono Nerd Font Mono",
+            cairo_select_font_face(cr, "3270 Nerd Font Propo",
                                    CAIRO_FONT_SLANT_NORMAL,
                                    CAIRO_FONT_WEIGHT_NORMAL);
 
