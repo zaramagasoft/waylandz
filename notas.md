@@ -8,6 +8,8 @@ gcc mainN3.c wlr-layer-shell-unstable-v1.c xdg-shell.c -o zmenun3 \
 $(pkg-config --cflags --libs wayland-client cairo) \
 -lpthread -lm -O2
 //////////////fuentes///////////////
+https://www.nerdfonts.com/font-downloads
+
 sudo cp 3270NerdFontPropo-Regular.ttf /usr/share/fonts/TTF/
 sudo cp /ruta/a/tu/fuente.ttf /usr/share/fonts/TTF/
 sudo fc-cache -fv //////////recargar 
