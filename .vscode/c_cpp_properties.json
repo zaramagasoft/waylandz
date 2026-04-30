@@ -4,8 +4,8 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "/usr/include/cairo",
-                "/usr/include/wayland"
+                "/usr/include/cairo"
+                
             ],
             "defines": [],
             "compilerPath": "/usr/bin/clang",

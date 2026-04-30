@@ -1,5 +1,9 @@
 gcc mainN2.c wlr-layer-shell-unstable-v1.c xdg-shell.c -o zmenun22     $(pkg-config --cflags --libs wayland-client cairo)     -lm -O2
 
+gcc test.c metricas.c -o tmetrics
+
+//TODO ajustar zmenuna resolucion minima vrtical 768 y maxima 4k
+
 gcc mainN3.c wlr-layer-shell-unstable-v1.c xdg-shell.c -o zmenun3 \
 $(pkg-config --cflags --libs wayland-client cairo) \
 -lpthread -lm -O2
