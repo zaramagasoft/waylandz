@@ -4,6 +4,7 @@
 #include "nuklear.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <sys/utsname.h>
 
 // Variables de fecha/hora
 char time_str[10];
@@ -14,12 +15,15 @@ static int show_confirm = 0; // 0: nada, 1: reboot, 2: poweroff
 static struct nk_color dark_bg;
 static struct nk_color phosphor_green;
 static struct nk_color dark_green;
+struct nk_style_button estilo_original;
+struct nk_style_button miestilo; // ✅ Copia directa
 
 static float vol_value = 0.6f;
 // static float bright_value = 0.8f;
-int logoDraw(struct nk_command_buffer *canvas,float y,float win_width,float logo_h);
-int datedraw(struct nk_context *ctx,float y,float win_width);
+int logoDraw(struct nk_command_buffer *canvas, float y, float win_width, float logo_h);
+int datedraw(struct nk_context *ctx, float y, float win_width);
 int voldraw(struct nk_context *ctx, float y, float win_width, float middle_h);
+int kernelraw(struct nk_context *ctx, float y, float win_width, float middle_h);
 
 // 🔊 VOLUMEN
 static void zui_set_volume(float v)
@@ -63,7 +67,6 @@ void UpdateVolume(int delta)
     sprintf(cmd, "pactl set-sink-volume @DEFAULT_SINK@ %d%% &", (int)(vol_value * 100));
     system(cmd);
 }
-
 
 void zui_init_colors()
 {
@@ -115,9 +118,11 @@ void zui_set_style(struct nk_context *ctx)
 }
 void zui_render(struct nk_context *ctx, int win_width, int win_height)
 {
+    estilo_original = ctx->style.button; // Guardamos el estilo original del botón
+    miestilo = estilo_original;          // Inicializamos mi_estilo con el original
     printf("winheightzUI:%f \n", win_height);
-    //printf("zui_render");
-    //fflush(stdout); // Esto te ayudará a ver cuándo se llama a zui_render
+    // printf("zui_render");
+    // fflush(stdout); // Esto te ayudará a ver cuándo se llama a zui_render
     static float last_sys_vol = -1.0f;
     // --- LÓGICA DE TIEMPO ---
     time_t rawtime;
@@ -128,7 +133,7 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
     // Formateamos HH:MM y la fecha (ej: 29 Abr)
     strftime(time_str, sizeof(time_str), "%H:%M", timeinfo);
     strftime(date_str, sizeof(date_str), "%d %b %Y", timeinfo);
-    //strftime(date_str, sizeof(date_str), "%d %b", timeinfo);
+    // strftime(date_str, sizeof(date_str), "%d %b", timeinfo);
 
     float sys_vol = GetSystemVolume() / 100.0f; // siempre leer sistema
     // Dentro de tu zui_render o donde leas el volumen:
@@ -139,7 +144,7 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
     // --- ZONAS ---
     float logo_h = win_height * 0.15f;
     float footer_h = win_height * 0.150f;
-        printf("CCCOMOOOOwinheight:%f \n", win_height);
+    printf("CCCOMOOOOwinheight:%f \n", win_height);
 
     float middle_h = win_height - logo_h - footer_h;
     vol_value = GetSystemVolume() / 100.0f; // Actualiza el volumen cada frame
@@ -154,10 +159,13 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
         float y = 0;
         y = logoDraw(canvas, y, win_width, logo_h);
         printf("Después de logoDraw, y = %f\n", y);
+        y = kernelraw(ctx, y, win_width, middle_h);
+        printf("Después de kernelraw, y = %f\n", y);
         y = datedraw(ctx, y, win_width);
         printf("Después de datedraw, y = %f\n", y);
         y = voldraw(ctx, y, win_width, middle_h);
         printf("Después de voldraw, y = %f\n", y);
+
         // =========================
         // 🔵 MIDDLE ZONE (debug opcional)
         // =========================
@@ -184,12 +192,10 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
         // Ajustamos start_y un poco para dejar sitio a la hora
         start_y = y + 40;
 
-        
-
-       
         // =========================
         // 🔴 FOOTER ZONE
         // =========================
+        miestilo.text_normal = nk_rgb(255, 0, 0); // Rojo para el texto del botón
         nk_fill_rect(canvas,
                      nk_rect(0, win_height - footer_h, win_width, footer_h),
                      0,
@@ -197,11 +203,10 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
 
                      nk_rgba(0, 0, 40, 0)); // 👈 ALPHA
 
-       
         // =========================
         // 🔴 FOOTER ZONE (UNA FILA - 3 BOTONES)
         // =========================
-            
+
         // --- CÁLCULO DE MEDIDAS ---
         float padding = 10.0f; // Un pelín menos de padding para que quepan bien
         float btn_h = 25.0f;
@@ -211,15 +216,15 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
 
         // Centrado vertical en el footer (una sola fila)
         float y_btn = win_height - footer_h + (footer_h - btn_h) / 2;
-        //middle_h= win_height - footer_h;
+        // middle_h= win_height - footer_h;
         printf("Medidas middleh:%f \n", middle_h);
         printf("Medidas foother:%f \n", footer_h);
         printf("Medidas middleh:%f \n", middle_h);
-         printf("winheightdESPUESLOGO:%f \n", win_height);
-        
+        printf("winheightdESPUESLOGO:%f \n", win_height);
+
         // Iniciamos el layout para 3 widgets
         nk_layout_space_begin(ctx, NK_STATIC, footer_h, 3);
-        
+
         // Definimos el mismo espacio de 3 huecos para ambos estados
         nk_layout_space_begin(ctx, NK_STATIC, btn_h, 3);
         int semaforo = 0;
@@ -230,10 +235,14 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
 
             // REBOOT
             nk_layout_space_push(ctx, nk_rect(padding, middle_h, btn_w_third, btn_h));
+            // cambiodecolor(ctx);
+
             if (nk_button_label(ctx, "\uf01e"))
+
                 show_confirm = 1;
 
-            // EXIT
+            // ctx->style.button = estilo_original;
+            //  EXIT
             nk_layout_space_push(ctx, nk_rect(padding * 2 + btn_w_third, middle_h, btn_w_third, btn_h));
             if (nk_button_label(ctx, "\uf08b"))
             {
@@ -242,7 +251,7 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
             }
 
             // POWER
-            nk_layout_space_push(ctx, nk_rect(padding * 3 + btn_w_third * 2, middle_h , btn_w_third, btn_h));
+            nk_layout_space_push(ctx, nk_rect(padding * 3 + btn_w_third * 2, middle_h, btn_w_third, btn_h));
             if (nk_button_label(ctx, "\uf011"))
                 show_confirm = 2;
         }
@@ -280,19 +289,19 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
 
     nk_end(ctx);
 }
-int logoDraw(struct nk_command_buffer *canvas,float y,float win_width,float logo_h)
+int logoDraw(struct nk_command_buffer *canvas, float y, float win_width, float logo_h)
 {
-   // =========================
-        // 🟢 LOGO ZONE (debug opcional)
-        // =========================
-        nk_fill_rect(canvas,
-                     nk_rect(0, y, win_width, logo_h),
-                     0,
-                     // nk_rgb(0, 255, 0));
-                     nk_rgba(40, 40, 40, 20)); // 👈 ALPHA
+    // =========================
+    // 🟢 LOGO ZONE (debug opcional)
+    // =========================
+    nk_fill_rect(canvas,
+                 nk_rect(0, y, win_width, logo_h),
+                 0,
+                 // nk_rgb(0, 255, 0));
+                 nk_rgba(40, 40, 40, 20)); // 👈 ALPHA
 
-        y += logo_h;
-        return y;
+    y += logo_h;
+    return y;
 }
 int datedraw(struct nk_context *ctx, float y, float win_width)
 {
@@ -302,67 +311,102 @@ int datedraw(struct nk_context *ctx, float y, float win_width)
     // 🕒 BLOQUE RELOJ
     // =========================
     nk_layout_space_begin(ctx, NK_STATIC, row_height, 1);
-    
+
     // Empujamos el rect en la posición 'y' actual
     nk_layout_space_push(ctx, nk_rect(5, y, win_width, row_height));
-    
+
     char icoReloj[60] = " \uf017 ";
     char icoCalendario[30] = "  \uf073 ";
-    
+
     strcat(icoReloj, time_str);
     strcat(icoReloj, " / ");
     strcat(icoCalendario, date_str);
     strcat(icoReloj, icoCalendario);
-             
+
     nk_label(ctx, icoReloj, NK_TEXT_LEFT);
-    
+
     nk_layout_space_end(ctx);
 
     // DEVOLVEMOS 'y' + la altura de lo que hemos dibujado
     // Así, el siguiente elemento sabrá que debe empezar más abajo.
-    return (int)(y + row_height); 
+    return (int)(y + row_height);
 }
-int voldraw(struct nk_context *ctx, float y, float win_width, float middle_h){
+int voldraw(struct nk_context *ctx, float y, float win_width, float middle_h)
+{
 
-    
-        // SLIDER 1
-        int offset = 20; // Un pequeño offset para que el slider no toque los bordes
-        float row_height = 20.0f; // La altura que reservamos para este bloque
-        float icon_w = 30.0f;
-        float label_w = 60.0f;
-        float value_w = 40.0f;
-        float slider_w = win_width - (1 * 2 + icon_w + label_w + value_w );
-        // float paddingM = 20.0f;
-        float slider_h = 55.0f;
-        nk_layout_space_begin(ctx, NK_STATIC, row_height, 8);
+    // SLIDER 1
+    int offset = 30;          // Un pequeño offset para que el slider no toque los bordes
+    float row_height = 20.0f; // La altura que reservamos para este bloque
+    float icon_w = 30.0f;
+    float label_w = 60.0f;
+    float value_w = 40.0f;
+    float slider_w = win_width - (1 * 2 + icon_w + label_w + value_w);
+    // float paddingM = 20.0f;
+    float slider_h = 55.0f;
+    nk_layout_space_begin(ctx, NK_STATIC, row_height, 8);
+    y += offset; // Un pequeño espacio antes de empezar a dibujar el bloque
 
-        // ICONO
-        nk_layout_space_push(ctx,
-                             nk_rect(0, y, icon_w, row_height * 2));
-        nk_label(ctx, "\uF028", NK_TEXT_CENTERED);
+    // ICONO
+    nk_layout_space_push(ctx,
+                         nk_rect(0, y, icon_w, row_height * 2));
+    nk_label(ctx, "\uF028", NK_TEXT_CENTERED);
 
-        // LABEL
-        nk_layout_space_push(ctx,
-                             nk_rect(1 + icon_w, y, label_w, row_height * 2));
-        nk_label(ctx, "VOLUME", NK_TEXT_LEFT);
+    // LABEL
+    nk_layout_space_push(ctx,
+                         nk_rect(1 + icon_w, y, label_w, row_height * 2));
+    nk_label(ctx, "VOLUME", NK_TEXT_CENTERED);
 
-        // SLIDER
-        nk_layout_space_push(ctx,
-                             nk_rect(1 + icon_w + label_w , y, slider_w-offset, row_height * 2));
-        if (nk_slider_float(ctx, 0.0f, &vol_value, 2.0f, 0.01f))
-        {
-            zui_set_volume(vol_value);
-        }
+    // SLIDER
+    nk_layout_space_push(ctx,
+                         nk_rect(1 + icon_w + label_w, y, slider_w - offset, row_height * 2));
+    if (nk_slider_float(ctx, 0.0f, &vol_value, 2.0f, 0.01f))
+    {
+        zui_set_volume(vol_value);
+    }
 
-        // VALOR
-        char buffer[16];
-        sprintf(buffer, "%d%%", (int)(vol_value * 100));
+    // VALOR
+    char buffer[16];
+    sprintf(buffer, "%d%%", (int)(vol_value * 100));
 
-        nk_layout_space_push(ctx,
-                             nk_rect(1+icon_w+label_w+slider_w-offset, y, value_w, row_height * 2));
-        nk_label(ctx, buffer, NK_TEXT_LEFT);
+    nk_layout_space_push(ctx,
+                         nk_rect(1 + icon_w + label_w + slider_w - offset, y, value_w, row_height * 2));
+    nk_label(ctx, buffer, NK_TEXT_CENTERED);
 
-        return (int)(y + row_height); // Devolvemos la posición final después de dibujar el bloque
+    return (int)(y + row_height); // Devolvemos la posición final después de dibujar el bloque
+}
+int kernelraw(struct nk_context *ctx, float y, float win_width, float middle_h)
+{
+    float row_height = 15.0f; // La altura que reservamos para este bloque
+    struct utsname u;
+    char kernel_info[256];
+
+    if (uname(&u) == 0)
+    {
+        char kernel[256];
+        snprintf(kernel, sizeof(kernel), "%s %s", u.sysname, u.release);
+        snprintf(kernel_info, sizeof(kernel_info), "Kernel: %s", kernel);
+        printf("Kernel: %s\n", kernel);
+    }
+    else
+    {
+        perror("uname");
+    }
+
+    // =========================
+    // 🕒 labelKernel
+    // =========================
+    nk_layout_space_begin(ctx, NK_STATIC, row_height, 1);
+
+    // Empujamos el rect en la posición 'y' actual
+    nk_layout_space_push(ctx, nk_rect(15, y, win_width * 0.75, row_height));
+
+    nk_label(ctx, kernel_info, NK_TEXT_CENTERED);
+
+    nk_layout_space_end(ctx);
+
+    // DEVOLVEMOS 'y' + la altura de lo que hemos dibujado
+    // Así, el siguiente elemento sabrá que debe empezar más abajo.
+    return (int)(y + row_height);
 }
 
 #endif

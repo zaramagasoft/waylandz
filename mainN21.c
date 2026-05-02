@@ -56,6 +56,7 @@ struct wl_surface *surf;
 struct wl_cursor_theme *cursor_theme;
 struct wl_cursor *default_cursor;
 struct wl_surface *cursor_surface;
+
 bool configured = false;
 static int frame_count = 0;
 uint32_t *shm_data_global;
