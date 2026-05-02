@@ -57,11 +57,13 @@ struct wl_cursor_theme *cursor_theme;
 struct wl_cursor *default_cursor;
 struct wl_surface *cursor_surface;
 
+
 bool configured = false;
 static int frame_count = 0;
 uint32_t *shm_data_global;
 static int retFlag = 0;
 static bool needs_redraw = false;
+char *mi_buffer[256];
 // ojo a estudiar bien esto, es la clave para no hacer render cada vez que recibimos un configure, sino solo cuando realmente haya que redibujar
 pid_t pid = -1; // Variable global al principio del archivo
 int win_width = 300;
@@ -74,6 +76,30 @@ void handle_vol_signal(int sig)
     // No hace falta escribir nada aquí.
     // El simple hecho de que esta función exista evita que el programa muera.
 }
+
+char *kernelinfo(char *buffer, size_t size)
+{
+    struct utsname u;
+
+    if (uname(&u) == 0)
+    {
+        snprintf(buffer, size, "Kernel: %s %s", u.sysname, u.release);
+        return buffer;
+    }
+    else
+    {
+        snprintf(buffer, size, "Kernel: Unknown");
+        return buffer;
+    }
+}
+/* char* midato(char* buffer) {
+     return buffer;
+    
+} */
+
+// Uso:
+// char mi_buffer[256];
+// printf("%s\n", kernelinfo(mi_buffer, sizeof(mi_buffer)));
 int refesco(struct wl_surface *surf);
 int wayinit(int win_width, int win_height, int *retFlag);
 void start_zui_monitor()
@@ -372,7 +398,7 @@ static const struct wl_pointer_listener pointer_listener = {
 static void layer_surface_configure(void *data, struct zwlr_layer_surface_v1 *ls, uint32_t serial, uint32_t width, uint32_t height)
 {
     zwlr_layer_surface_v1_ack_configure(ls, serial);
-        printf("winheight en layer configre antes:%f \n", win_height);
+    printf("winheight en layer configre antes:%f \n", win_height);
 
     win_width = width;
     win_height = height;
@@ -408,9 +434,11 @@ int main(int argc, char **argv)
         win_height = atoi(argv[2]);
     }
     signal(SIGUSR1, handle_vol_signal);
-
+    // Uso:
+    char su_buffer[256];
+    printf("%s\n", kernelinfo(su_buffer, sizeof(su_buffer)));
     // --- 2. LANZAR EL MONITOR (FORK) ---
-
+    *mi_buffer=kernelinfo(su_buffer, sizeof(su_buffer));
     // monitor_pactl_simple(); // Iniciamos el monitor de volumen en un proceso aparte
     start_zui_monitor(); // Iniciamos el monitor de volumen en un proceso aparte
     // --- CONEXIÓN WAYLAND ---

@@ -1,3 +1,5 @@
+extern  char *mi_buffer[256];
+
 #ifndef ZUI_H
 #define ZUI_H
 
@@ -377,21 +379,7 @@ int voldraw(struct nk_context *ctx, float y, float win_width, float middle_h)
 int kernelraw(struct nk_context *ctx, float y, float win_width, float middle_h)
 {
     float row_height = 15.0f; // La altura que reservamos para este bloque
-    struct utsname u;
-    char kernel_info[256];
-
-    if (uname(&u) == 0)
-    {
-        char kernel[256];
-        snprintf(kernel, sizeof(kernel), "%s %s", u.sysname, u.release);
-        snprintf(kernel_info, sizeof(kernel_info), "Kernel: %s", kernel);
-        printf("Kernel: %s\n", kernel);
-    }
-    else
-    {
-        perror("uname");
-    }
-
+    
     // =========================
     // 🕒 labelKernel
     // =========================
@@ -400,7 +388,7 @@ int kernelraw(struct nk_context *ctx, float y, float win_width, float middle_h)
     // Empujamos el rect en la posición 'y' actual
     nk_layout_space_push(ctx, nk_rect(15, y, win_width * 0.75, row_height));
 
-    nk_label(ctx, kernel_info, NK_TEXT_CENTERED);
+    nk_label(ctx, *mi_buffer, NK_TEXT_CENTERED);
 
     nk_layout_space_end(ctx);
 
