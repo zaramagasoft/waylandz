@@ -138,7 +138,7 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
     float v = vol_value;
     // --- ZONAS ---
     float logo_h = win_height * 0.15f;
-    float footer_h = win_height * 0.20f;
+    float footer_h = win_height * 0.150f;
         printf("CCCOMOOOOwinheight:%f \n", win_height);
 
     float middle_h = win_height - logo_h - footer_h;

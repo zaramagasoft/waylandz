@@ -467,8 +467,8 @@ int wayinit(int win_width, int win_height, int *retFlag)
 
     struct zwlr_layer_surface_v1 *ls = zwlr_layer_shell_v1_get_layer_surface(layer_shell, surf, NULL, ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY, "dock");
     static const struct zwlr_layer_surface_v1_listener lsl = {layer_surface_configure, (void *)exit};
-    zwlr_layer_surface_v1_set_anchor(ls, ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM);
-    zwlr_layer_surface_v1_set_size(ls, win_width, 0);
+    zwlr_layer_surface_v1_set_anchor(ls, ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM);
+    zwlr_layer_surface_v1_set_size(ls, win_width, win_height);
     zwlr_layer_surface_v1_add_listener(ls, &lsl, surf);
     struct wl_cursor_theme *cursor_theme;
     struct wl_cursor *default_cursor;
