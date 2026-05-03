@@ -436,7 +436,7 @@ int main(int argc, char **argv)
     signal(SIGUSR1, handle_vol_signal);
     // Uso:
     char su_buffer[256];
-    printf("%s\n", kernelinfo(su_buffer, sizeof(su_buffer)));
+    //[[[[[[[[[printf("%s\n", kernelinfo(su_buffer, sizeof(su_buffer)));
     // --- 2. LANZAR EL MONITOR (FORK) ---
     *mi_buffer=kernelinfo(su_buffer, sizeof(su_buffer));
     // monitor_pactl_simple(); // Iniciamos el monitor de volumen en un proceso aparte

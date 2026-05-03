@@ -1,12 +1,99 @@
 #include "metricas.h"
 #include <stdio.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <unistd.h>
+#include <string.h>
+#include <fcntl.h>
+#include <errno.h>
 
-int main() {
+#define SOCKET_PATH "/tmp/zmetrics.sock"
+
+typedef struct
+{
+    char magic[4];   // "ZMET"
+    uint8_t version; // 1
+    uint8_t type;    // 1 = metrics
+    uint16_t size;   // payload size
+} ZHeader;
+
+int zsock_init()
+{
+    int sock = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (sock < 0)
+    {
+        perror("socket");
+        return -1;
+    }
+
+    // 🔥 limpiar socket viejo ANTES del bind
+    unlink(SOCKET_PATH);
+
+    struct sockaddr_un addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sun_family = AF_UNIX;
+
+    // 🔥 SOLO filesystem socket (NO abstract mix)
+    strncpy(addr.sun_path, SOCKET_PATH, sizeof(addr.sun_path) - 1);
+
+    int len = sizeof(struct sockaddr_un);
+
+    printf("[DEBUG] socket=%d\n", sock);
+    printf("[DEBUG] len=%d\n", len);
+    printf("[DEBUG] path=%s\n", SOCKET_PATH);
+
+    if (bind(sock, (struct sockaddr *)&addr, len) < 0)
+    {
+        perror("bind FAIL");
+        close(sock);
+        return -1;
+    }
+
+    if (listen(sock, 5) < 0)
+    {
+        perror("listen");
+        close(sock);
+        return -1;
+    }
+
+    // 🔥 non-blocking accept
+    int flags = fcntl(sock, F_GETFL, 0);
+    fcntl(sock, F_SETFL, flags | O_NONBLOCK);
+
+    printf("socket bind OK\n");
+
+    return sock;
+}
+
+void zsock_send_metrics(int sock, ZMetrics *m)
+{
+
+    int client = accept(sock, NULL, NULL);
+    if (client < 0)
+        return;
+
+    // ZHeader h = {...};
+    ZHeader h = {
+        .magic = {'Z', 'M', 'E', 'T'},
+        .version = 1,
+        .type = 1,
+        .size = sizeof(ZMetrics)};
+
+    write(client, &h, sizeof(h));
+    write(client, m, sizeof(ZMetrics));
+
+    close(client); // ✔ correcto en este modelo
+}
+
+int main()
+{
     ZMetrics m;
+
     metrics_init(&m);
-    
-    printf("\033[2J\033[H"); // Limpiar pantalla
+
+    printf("\033[2J\033[H");
     printf("ZaramagaOS Hardware Info\n");
     printf("------------------------\n");
     printf("CPU:   %s\n", m.cpu_model);
@@ -14,13 +101,22 @@ int main() {
     printf("GPU:   %s\n", m.gpu_name);
     printf("------------------------\n");
 
-    while(1) {
+    int sock = zsock_init();
+    if (sock < 0)
+        return 1;
+
+    while (1)
+    {
         metrics_update(&m);
-        // \r para sobrescribir la línea
-        printf("\rCPU: %.1f%% | RAM: %.2f/%.1f GB | TEMP: %d°C    ", 
+
+        zsock_send_metrics(sock, &m);
+
+        printf("\rCPU: %.1f%% | RAM: %.2f/%.1f GB | TEMP: %d°C    ",
                m.cpu_usage, m.mem_used_gb, m.mem_total_gb, m.temp_c);
+
         fflush(stdout);
-        sleep(2); // Tu refresco de 2 segundos
+        sleep(2);
     }
+
     return 0;
 }
