@@ -8,6 +8,8 @@
 #include <string.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <signal.h>
+
 
 #define SOCKET_PATH "/tmp/zmetrics.sock"
 
@@ -89,6 +91,7 @@ void zsock_send_metrics(int sock, ZMetrics *m)
 
 int main()
 {
+    signal(SIGPIPE, SIG_IGN);  // 🔥 clave
     ZMetrics m;
 
     metrics_init(&m);

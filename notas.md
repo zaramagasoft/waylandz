@@ -1,7 +1,7 @@
+TO-DO aniadir cliente a zmenun22
 ///server ojo
 
-  gcc test.c metricas.c -o tmetrics
-  ./tmetrics 
+  gcc test.c metricas.c -o zmetrics-server
 //cliente metricas
 
   gcc cliente.c -o zmetrics-client
