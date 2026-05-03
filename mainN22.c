@@ -117,7 +117,8 @@ int wayinit(int win_width, int win_height, int *retFlag);
 void start_zui_metrics_monitor()
 {
     pid_t m_pid = fork();
-    if (m_pid < 0) return;
+    if (m_pid < 0)
+        return;
 
     if (m_pid == 0) // HIJO
     {
@@ -125,34 +126,32 @@ void start_zui_metrics_monitor()
         signal(SIGUSR1, SIG_IGN);
 
         FILE *fp = popen("./zmetrics-client", "r");
-        if (!fp) exit(1);
+        if (!fp)
+            exit(1);
 
         char linea[1024];
-        while (fgets(linea, sizeof(linea), fp) != NULL)
+       while (fgets(linea, sizeof(linea), fp) != NULL)
         {
-            // Forzamos un debug para ver TODO lo que entra
-            printf("Z-DEBUG-RAW: %s", linea);
-
-            // 1. Cazar CPU (independiente)
+            // 1. CPU -> a la memoria compartida
             if (strstr(linea, "CPU:")) {
-                if (sscanf(strstr(linea, "CPU:"), "CPU: %f", &sys_cpu) == 1) {
-                    printf("Z-DEBUG: CPU CAPTURADA -> %.1f\n", sys_cpu);
-                }
-            } 
-            
-            // 2. Cazar RAM (independiente)
-            if (strstr(linea, "RAM:")) {
-                if (sscanf(strstr(linea, "RAM:"), "RAM: %f / %f", &sys_mem_u, &sys_mem_t) == 2) {
-                    printf("Z-DEBUG: RAM CAPTURADA -> %.2f\n", sys_mem_u);
+                if (sscanf(strstr(linea, "CPU:"), "CPU: %f", &m_shared->cpu) == 1) { // <--- CAMBIO AQUÍ
+                    printf("Z-DEBUG: CPU EN SHARED -> %.1f\n", m_shared->cpu);
                 }
             }
 
-            // 3. Cazar TEMP y dar el aviso (independiente)
+            // 2. RAM -> a la memoria compartida
+            if (strstr(linea, "RAM:")) {
+                if (sscanf(strstr(linea, "RAM:"), "RAM: %f / %f", &m_shared->mem_u, &m_shared->mem_t) == 2) { // <--- CAMBIO AQUÍ
+                    printf("Z-DEBUG: RAM EN SHARED -> %.2f\n", m_shared->mem_u);
+                }
+            }
+
+            // 3. TEMP -> a la memoria compartida
             if (strstr(linea, "TEMP:")) {
-                if (sscanf(strstr(linea, "TEMP:"), "TEMP: %d", &sys_temp) == 1) {
-                    printf("Z-DEBUG: TEMP CAPTURADA -> %d. Avisando al padre...\n", sys_temp);
+                if (sscanf(strstr(linea, "TEMP:"), "TEMP: %d", &m_shared->temp) == 1) { // <--- CAMBIO AQUÍ
+                    printf("Z-DEBUG: TEMP EN SHARED -> %d. Avisando...\n", m_shared->temp);
                     kill(getppid(), SIGUSR1);
-                    usleep(2000000); // Esperamos 1 seg entre actualizaciones
+                    usleep(2000000); 
                 }
             }
         }
@@ -496,8 +495,13 @@ int main(int argc, char **argv)
     // zui_update_metrics(); // <--- Llamada única antes del bucle
     // printf("Z-DEBUG: Lectura completada.\n");
     // Uso:
-    m_shared = mmap(NULL, sizeof(struct shared_metrics), PROT_READ | PROT_WRITE, 
-                MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+    m_shared = mmap(NULL, sizeof(struct shared_metrics), PROT_READ | PROT_WRITE,
+                    MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+    if (m_shared == MAP_FAILED)
+    {
+        perror("mmap falló");
+        exit(1);
+    }
     char su_buffer[256];
     //[[[[[[[[[printf("%s\n", kernelinfo(su_buffer, sizeof(su_buffer)));
     // --- 2. LANZAR EL MONITOR (FORK) ---
