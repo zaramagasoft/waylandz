@@ -7,8 +7,11 @@ TO-DO aniadir cliente a zmenun22
 //cliente metricas
 
   gcc cliente.c -o zmetrics-client
-  ./zmetrics-client 
+
  gcc mainN21.c wlr-layer-shell-unstable-v1.c xdg-shell.c -o zmenun221     $(pkg-config --cflags --libs wayland-client cairo)     -lm -O2
+----fuentes----
+ sudo cp 3270NerdFontPropo-Regular.ttf /usr/share/fonts/
+ sudo fc-cache -fv     
 
 gcc mainN2.c wlr-layer-shell-unstable-v1.c xdg-shell.c -o zmenun22     $(pkg-config --cflags --libs wayland-client cairo)     -lm -O2
 

@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <dirent.h>
+#include <unistd.h>
 
 static char temp_path[256] = "";
 static long last_total = 0, last_idle = 0;
@@ -102,28 +103,42 @@ void metrics_init(ZMetrics *m)
     // 4. Buscar sensor de temperatura (Agnóstico)
     struct dirent *de;
     DIR *dr = opendir("/sys/class/hwmon");
-    if (dr)
+    // En metrics_init
+if (dr)
+{
+    while ((de = readdir(dr)) != NULL)
     {
-        while ((de = readdir(dr)) != NULL)
+        if (de->d_name[0] == 'h')
         {
-            if (de->d_name[0] == 'h')
+            char name_path[256], name[64];
+            snprintf(name_path, sizeof(name_path), "/sys/class/hwmon/%s/name", de->d_name);
+            FILE *fn = fopen(name_path, "r");
+            if (fn)
             {
-                char name_path[256], name[64];
-                snprintf(name_path, sizeof(name_path), "/sys/class/hwmon/%s/name", de->d_name);
-                FILE *fn = fopen(name_path, "r");
-                if (fn)
+                if (fscanf(fn, "%s", name) == 1)
                 {
-                    fscanf(fn, "%s", name);
-                    fclose(fn);
-                    if (strcmp(name, "k10temp") == 0 || strcmp(name, "coretemp") == 0)
+                    // Añadimos más drivers comunes en Intel Mobile/Atom
+                    if (strcmp(name, "coretemp") == 0 || 
+                        strcmp(name, "acpitz") == 0 || 
+                        strcmp(name, "intel_soc_dts_thermal") == 0)
                     {
+                        // Intentamos temp1, pero si no, Rust suele mirar temp2
+                        // Por ahora aseguremos la ruta base
                         snprintf(temp_path, sizeof(temp_path), "/sys/class/hwmon/%s/temp1_input", de->d_name);
+                        
+                        // TEST RÁPIDO: ¿Existe el archivo?
+                        if (access(temp_path, F_OK) == -1) {
+                            // Si temp1 no existe, probamos temp2 (típico de Celeron)
+                            snprintf(temp_path, sizeof(temp_path), "/sys/class/hwmon/%s/temp2_input", de->d_name);
+                        }
                     }
                 }
+                fclose(fn);
             }
         }
-        closedir(dr);
     }
+    closedir(dr);
+}
 }
 
 void metrics_update(ZMetrics *m)
@@ -162,15 +177,32 @@ void metrics_update(ZMetrics *m)
     }
 
     // Temp
-    if (temp_path[0])
+   // Temp con Filtro de Cordura
+   // Temp - Versión Robusta
+    if (temp_path[0] != '\0')
     {
         FILE *ft = fopen(temp_path, "r");
         if (ft)
         {
-            int t;
-            fscanf(ft, "%d", &t);
-            m->temp_c = t / 1000;
+            char temp_buf[32] = {0}; // Buffer intermedio para no corromper la pila
+            if (fgets(temp_buf, sizeof(temp_buf), ft) != NULL)
+            {
+                // Usamos long para evitar desbordamientos en el cálculo
+                long t_val = atol(temp_buf); 
+                
+                if (t_val > 1000 || t_val < -1000)
+                    m->temp_c = (int)(t_val / 1000);
+                else
+                    m->temp_c = (int)t_val;
+                
+                // Si después de todo sigue dando locuras, es un sensor "muerto"
+                if (m->temp_c > 150 || m->temp_c < -20) m->temp_c = 0;
+            }
             fclose(ft);
+        }
+        else 
+        {
+            m->temp_c = 0; // Si no puede abrirlo, no inventes basura
         }
     }
 }
