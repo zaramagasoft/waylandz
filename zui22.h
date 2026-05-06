@@ -1,4 +1,7 @@
 extern char *mi_buffer[256];
+#include "zmetrics.h"
+
+extern ZMetrics *metricasZui;
 
 #ifndef ZUI22_H
 #define ZUI22_H
@@ -26,7 +29,7 @@ static float sys_mem_t = 0.0f;
 static int sys_temp = 0;
 
 // Estructuras del protocolo (basadas en tu cliente)
-typedef struct
+/* typedef struct
 {
     char magic[4];
     unsigned char version;
@@ -43,9 +46,10 @@ typedef struct
     char cpu_model[64];
     char mobo_name[64];
     char gpu_name[64];
-} ZMetrics;
+} ZMetrics; */
 // Asegúrate de incluir los headers necesarios para la estructura
-struct shared_metrics {
+struct shared_metrics
+{
     float cpu;
     float mem_u;
     float mem_t;
@@ -87,7 +91,7 @@ static int zui_read_full(int sock, void *buf, size_t len)
 
 #include <errno.h>
 
-void zui_update_metrics() {
+/* void zui_update_metrics() {
     printf("Z-DEBUG: Intentando conectar al socket de métricas...\n");
     int sock = socket(AF_UNIX, SOCK_STREAM, 0);
     if (sock < 0) return;
@@ -126,22 +130,22 @@ void zui_update_metrics() {
                 fflush(stdout);
             }else
             {
-                printf("Z-DEBUG: Error al leer métricas completas: %s\n", strerror(errno)); 
+                printf("Z-DEBUG: Error al leer métricas completas: %s\n", strerror(errno));
             }
-            
+
         }else
         {
             printf("Z-DEBUG: Error al leer cabecera: %s\n", strerror(errno));
         }
-        
+
     } else
     {
         printf("Z-DEBUG: No se pudo conectar al socket de métricas: %s\n", strerror(errno));
     }
-    
+
     // Si no conecta, simplemente cerramos y el siguiente frame (en 16ms) lo volverá a intentar
     close(sock);
-}
+} */
 // 🔊 VOLUMEN
 static void zui_set_volume(float v)
 {
@@ -246,11 +250,19 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
     struct tm *timeinfo;
     time(&rawtime);
     timeinfo = localtime(&rawtime);
-    
+
     // Formateamos HH:MM y la fecha (ej: 29 Abr)
     strftime(time_str, sizeof(time_str), "%H:%M", timeinfo);
     strftime(date_str, sizeof(date_str), "%d %b %Y", timeinfo);
     // strftime(date_str, sizeof(date_str), "%d %b", timeinfo);
+    //////zmetrics////////////
+    while (metricasZui == NULL)
+    {
+        printf("Esperando a que metricasZui esté disponible...\n");
+        usleep(2000000); // Espera 100ms antes de volver a comprobar
+    }
+      printf("Métricas en zui_render: CPU=%.1f%%, RAM=%.2f/%.2fGB, Temp=%d°C\n",
+            metricasZui->cpu_usage, metricasZui->mem_used_gb, metricasZui->mem_total_gb, metricasZui->temp_c); 
 
     float sys_vol = GetSystemVolume() / 100.0f; // siempre leer sistema
     // Dentro de tu zui_render o donde leas el volumen:
@@ -282,7 +294,7 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
         printf("Después de datedraw, y = %f\n", y);
         y = voldraw(ctx, y, win_width, middle_h);
         printf("Después de voldraw, y = %f\n", y);
-        printf("cpuZui %f\n",m_shared->cpu);
+        printf("cpuZui %f\n", m_shared->cpu);
 
         // =========================
         // 🔵 MIDDLE ZONE (debug opcional)
