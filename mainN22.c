@@ -180,11 +180,11 @@ void *hilo_funcion(void *arg)
             continue;
         }
 
-        printf("\033[H\033[J");
+    /*     printf("\033[H\033[J");
         printf("CPU: %.1f\n", m.cpu_usage);
         printf("RAM: %.2f / %.2f GB\n", m.mem_used_gb, m.mem_total_gb);
         printf("TEMP: %d°C\n", m.temp_c);
-        fflush(stdout);
+        fflush(stdout); */
         metricasZui = &m; // Asignamos el puntero a la estructura ZMetrics
         close(sock);
         usleep(200000);
