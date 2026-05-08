@@ -475,7 +475,7 @@ int metricsDraw(struct nk_context *ctx, float y, float win_width, float footer_h
 
     // Formateamos todo de una sola vez
     snprintf(metricasall, sizeof(metricasall),
-             "\uf4bccpu%.1f%% \uefc5ram%.2f% \uef2b%d°C",
+             "\uf4bccpu:%.0f%% \uefc5ram:%.0f% \uef2b%d°C",
              metricasZui->cpu_usage,
              metricasZui->mem_used_gb/metricasZui->mem_total_gb*100.0f,
              metricasZui->temp_c);
