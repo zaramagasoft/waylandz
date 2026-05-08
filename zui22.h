@@ -44,7 +44,7 @@ static struct nk_color phosphor_green;
 static struct nk_color dark_green;
 struct nk_style_button estilo_original;
 struct nk_style_button miestilo; // ✅ Copia directa
-int contador=0;
+int contador = 0;
 
 static float vol_value = 0.6f;
 // static float bright_value = 0.8f;
@@ -52,7 +52,7 @@ int logoDraw(struct nk_command_buffer *canvas, float y, float win_width, float l
 int datedraw(struct nk_context *ctx, float y, float win_width);
 int voldraw(struct nk_context *ctx, float y, float win_width, float middle_h);
 int kernelraw(struct nk_context *ctx, float y, float win_width, float middle_h);
-
+int metricsDraw(struct nk_context *ctx, float y, float win_width, float footer_h);
 #include <errno.h>
 
 // Copiamos tu función ganadora del cliente.c
@@ -143,7 +143,6 @@ void zui_set_style(struct nk_context *ctx)
     ctx->style.button.text_normal = phosphor_green;
     ctx->style.button.text_hover = nk_rgb(255, 255, 255);
 
-  
     // SLIDERS (Corregido para ZaramagaOS)
     ctx->style.slider.bar_normal = dark_green;
     ctx->style.slider.bar_active = phosphor_green;                            // Color de la barra "rellena"
@@ -161,8 +160,8 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
 {
     estilo_original = ctx->style.button; // Guardamos el estilo original del botón
     miestilo = estilo_original;          // Inicializamos mi_estilo con el original
-    printf("winheightzUI:%f \n", win_height);
-    printf("zui_render %d\n", contador++  );
+    // printf("winheightzUI:%f \n", win_height);
+    printf("zui_render %d\n", contador++);
     // fflush(stdout); // Esto te ayudará a ver cuándo se llama a zui_render
     static float last_sys_vol = -1.0f;
     // --- LÓGICA DE TIEMPO ---
@@ -181,8 +180,8 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
         printf("Esperando a que metricasZui esté disponible...\n");
         usleep(2000000); // Espera 100ms antes de volver a comprobar
     }
-      printf("Métricas en zui_render: CPU=%.1f%%, RAM=%.2f/%.2fGB, Temp=%d°C\n",
-            metricasZui->cpu_usage, metricasZui->mem_used_gb, metricasZui->mem_total_gb, metricasZui->temp_c); 
+    printf("Métricas en zui_render: CPU=%.1f%%, RAM=%.2f/%.2fGB, Temp=%d°C\n",
+           metricasZui->cpu_usage, metricasZui->mem_used_gb, metricasZui->mem_total_gb, metricasZui->temp_c);
 
     float sys_vol = GetSystemVolume() / 100.0f; // siempre leer sistema
     // Dentro de tu zui_render o donde leas el volumen:
@@ -193,7 +192,7 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
     // --- ZONAS ---
     float logo_h = win_height * 0.15f;
     float footer_h = win_height * 0.150f;
-    printf("CCCOMOOOOwinheight:%f \n", win_height);
+    // printf("CCCOMOOOOwinheight:%f \n", win_height);
 
     float middle_h = win_height - logo_h - footer_h;
     vol_value = GetSystemVolume() / 100.0f; // Actualiza el volumen cada frame
@@ -214,7 +213,9 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
         printf("Después de datedraw, y = %f\n", y);
         y = voldraw(ctx, y, win_width, middle_h);
         printf("Después de voldraw, y = %f\n", y);
-        printf("cpuZui %f\n", m_shared->cpu);
+        // printf("cpuZui %f\n", m_shared->cpu);
+
+        int pos = metricsDraw(ctx, win_height - footer_h, win_width, footer_h);
 
         // =========================
         // 🔵 MIDDLE ZONE (debug opcional)
@@ -444,5 +445,46 @@ int kernelraw(struct nk_context *ctx, float y, float win_width, float middle_h)
     // Así, el siguiente elemento sabrá que debe empezar más abajo.
     return (int)(y + row_height);
 }
+int metricsDraw(struct nk_context *ctx, float y, float win_width, float footer_h)
+{
+    printf("Entrando a metricsDraw, footer_h = %f\n", y);
+    float row_height = 20.0f; // La altura que reservamos para este bloque
 
+    // =========================
+    // 📊 BLOQUE MÉTRICAS
+    // =========================
+    nk_layout_space_begin(ctx, NK_STATIC, row_height, 3);
+
+    // Empujamos el rect en la posición 'y' actual
+    nk_layout_space_push(ctx, nk_rect(15, y, win_width * 0.75, row_height));
+    /*   printf("Métricas en zui_render: CPU=%.1f%%, RAM=%.2f/%.2fGB, Temp=%d°C\n",
+             metricasZui->cpu_usage, metricasZui->mem_used_gb, metricasZui->mem_total_gb, metricasZui->temp_c);
+  */
+    /* char icoReloj[60] = " \uf017 ";
+    char icoCalendario[30] = "  \uf073 ";
+
+    strcat(icoReloj, time_str);
+    strcat(icoReloj, " / ");
+    strcat(icoCalendario, date_str);
+    strcat(icoReloj, icoCalendario);
+     */
+    //char metricasall[100];
+    //char cpu_str[20] = "", mem_str[30] = "\uefc5 ", temp_str[30] = "\uef2b ";
+    // cpu_str="CPU: %.1f%%";
+    char metricasall[128]; // Asegúrate de que sea lo bastante grande
+
+    // Formateamos todo de una sola vez
+    snprintf(metricasall, sizeof(metricasall),
+             "%.1f%%  %.2f/%.2fGB  %d°C",
+             metricasZui->cpu_usage,
+             metricasZui->mem_used_gb,
+             metricasZui->mem_total_gb,
+             metricasZui->temp_c);
+
+    // Ahora Nuklear lo recibirá perfecto
+    nk_label(ctx, metricasall, NK_TEXT_LEFT);
+    nk_label(ctx, metricasall, NK_TEXT_LEFT);
+
+    nk_layout_space_end(ctx);
+}
 #endif

@@ -84,21 +84,21 @@ typedef struct
     unsigned short size;
 } ZHeader;
 
-
 ZMetrics *metricasZui = NULL;
 bool frame_callback_pending = false; // Para evitar múltiples callbacks pendientes
-struct shared_metrics *m_shared; // Variable globalz
+struct shared_metrics *m_shared;     // Variable globalz
 // ojo a estudiar bien esto, es la clave para no hacer render cada vez que recibimos un configure, sino solo cuando realmente haya que redibujar
 pid_t pid = -1; // Variable global al principio del archivo
 int win_width = 300;
 int win_height = 550;
 int cur_x = 0, cur_y = 0;
-static void on_frame_done(void *data, struct wl_callback *cb, uint32_t time) {
+static void on_frame_done(void *data, struct wl_callback *cb, uint32_t time)
+{
     wl_callback_destroy(cb);
     frame_callback_pending = false; // Ya podemos volver a dibujar
 }
 
-static const struct wl_callback_listener frame_listener = { .done = on_frame_done };
+static const struct wl_callback_listener frame_listener = {.done = on_frame_done};
 static int read_full(int sock, void *buf, size_t len)
 {
     size_t off = 0;
@@ -122,7 +122,7 @@ void *hilo_funcion(void *arg)
 {
 
     int valor = *(int *)arg;
-    printf("Hola desde el hilo!\n");
+    //printf("Hola desde el hilo!\n");
 
     int sock = socket(AF_UNIX, SOCK_STREAM, 0);
     if (sock < 0)
@@ -182,8 +182,6 @@ void *hilo_funcion(void *arg)
 void handle_vol_signal(int sig)
 {
     needs_redraw = true; // ← seguro, solo escribe un bool
-
- 
 }
 
 char *kernelinfo(char *buffer, size_t size)
@@ -442,14 +440,15 @@ static void render_frame(struct wl_surface *surface)
     clock_gettime(CLOCK_MONOTONIC, &now);
 
     // Calculamos la diferencia en milisegundos
-    long delta_ms = (now.tv_sec - last_draw.tv_sec) * 1000 + 
+    long delta_ms = (now.tv_sec - last_draw.tv_sec) * 1000 +
                     (now.tv_nsec - last_draw.tv_nsec) / 1000000;
 
     // --- EL FILTRO ZARAMAGA ---
     // Si han pasado menos de 33ms (aprox 30 FPS), ignoramos el render
     // Puedes subirlo a 100ms si quieres que sea aún más ahorrador
-    if (delta_ms < 200) {
-        return; 
+    if (delta_ms < 200)
+    {
+        return;
     }
     last_draw = now;
     zui_render(&ctx, win_width, win_height);
@@ -470,7 +469,7 @@ static void render_frame(struct wl_surface *surface)
     // 🔥 LA MAGIA: Pedimos el callback antes del commit
     struct wl_callback *cb = wl_surface_frame(surface);
     wl_callback_add_listener(cb, &frame_listener, NULL);
-    frame_callback_pending = true; 
+    frame_callback_pending = true;
 
     wl_surface_commit(surface);
     needs_redraw = false;
@@ -485,15 +484,18 @@ static void pointer_motion(void *data, struct wl_pointer *ptr, uint32_t time, wl
 {
     cur_x = wl_fixed_to_int(x);
     cur_y = wl_fixed_to_int(y);
-    
+
     // 1. Informamos a Nuklear de la nueva posición
     nk_input_motion(&ctx, cur_x, cur_y);
 
     // 2. Comprobamos si el ratón está sobre algo que Nuklear reconozca
     // Esto evita que redibujes cuando el ratón está en el "espacio vacío"
-    if (nk_window_is_any_hovered(&ctx)) {
-        needs_redraw = true; 
-    }else {
+    if (nk_window_is_any_hovered(&ctx))
+    {
+        needs_redraw = true;
+    }
+    else
+    {
         needs_redraw = false; // No hay interacción, no redibujamos
     }
 }
@@ -535,8 +537,8 @@ static void layer_surface_configure(void *data, struct zwlr_layer_surface_v1 *ls
 
     win_width = width;
     win_height = height;
-    //needs_redraw = true;
-    // ESTO ES VITAL: Sin esto el padre nunca dibujará
+    // needs_redraw = true;
+    //  ESTO ES VITAL: Sin esto el padre nunca dibujará
     configured = true;
     printf(" despues layer configrewinheight:%f \n", win_height);
 
@@ -567,7 +569,7 @@ int main(int argc, char **argv)
         win_height = atoi(argv[2]);
     }
     signal(SIGUSR1, handle_vol_signal);
-    
+
     m_shared = mmap(NULL, sizeof(struct shared_metrics), PROT_READ | PROT_WRITE,
                     MAP_SHARED | MAP_ANONYMOUS, -1, 0);
     if (m_shared == MAP_FAILED)
@@ -683,9 +685,19 @@ int refesco(struct wl_surface *surf)
         clock_gettime(CLOCK_REALTIME, &now);
         // Despertar cada minuto (60s - segundos actuales)
         // Añadimos 500ms de margen para asegurar que el sistema ya cambió el minuto
-        int timeout_ms = ((60 - (now.tv_sec % 60)) * 1000) + 500;
+        /*  int timeout_ms = ((60 - (now.tv_sec % 60)) * 1000) + 500;
 
-        int ret = poll(&pfd, 1, timeout_ms);
+         int ret = poll(&pfd, 1, timeout_ms); */
+        int ms_hasta_minuto = ((60 - (now.tv_sec % 60)) * 1000) + 500;
+
+        // 2. Definimos el intervalo de las métricas (2 segundos)
+        int ms_hasta_metricas = 2000;
+
+        // 3. Elegimos el más pequeño de los dos
+        int timeout_final = (ms_hasta_minuto < ms_hasta_metricas) ? ms_hasta_minuto : ms_hasta_metricas;
+
+        // 4. Lanzamos el poll con el tiempo justo
+        int ret = poll(&pfd, 1, timeout_final);
 
         if (ret == 0)
         {
