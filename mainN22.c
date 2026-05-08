@@ -6,7 +6,7 @@
 #include <signal.h>
 #include <stdbool.h>
 #include <string.h>
-#include <unistd.h>
+
 #include <poll.h>
 #include <sys/mman.h>
 #include <wayland-client.h>
@@ -19,16 +19,12 @@
 #include <sys/wait.h>
 #include <sys/prctl.h>
 #include <pthread.h>
-#include <stdio.h>
-#include <stdlib.h>
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/types.h>
+#include <sys/timerfd.h>
 // --- CONFIGURACIÓN NUKLEAR ---
 #define NK_INCLUDE_FIXED_TYPES
 #define NK_INCLUDE_STANDARD_IO
@@ -75,15 +71,10 @@ uint32_t *shm_data_global;
 static int retFlag = 0;
 static bool needs_redraw = false;
 char *mi_buffer[256];
-// Estructura para compartir datos entre procesos
-struct shared_metrics
-{
-    float cpu;
-    float mem_u;
-    float mem_t;
-    int temp;
-};
 
+ZMetrics datos_compartidos;
+pthread_mutex_t mutex_metricas = PTHREAD_MUTEX_INITIALIZER;
+bool hay_datos_nuevos = false;
 #define SOCKET_PATH "/tmp/zmetrics.sock"
 typedef struct
 {
@@ -93,25 +84,21 @@ typedef struct
     unsigned short size;
 } ZHeader;
 
-/* typedef struct
-{
-    float cpu_usage;
-    float mem_used_gb;
-    float mem_total_gb;
-    int temp_c;
-    char cpu_model[64];
-    char mobo_name[64];
-    char gpu_name[64];
-} ZMetrics; */
-//ZMetrics *metricasZui ;
-ZMetrics *metricasZui = NULL;
 
+ZMetrics *metricasZui = NULL;
+bool frame_callback_pending = false; // Para evitar múltiples callbacks pendientes
 struct shared_metrics *m_shared; // Variable globalz
 // ojo a estudiar bien esto, es la clave para no hacer render cada vez que recibimos un configure, sino solo cuando realmente haya que redibujar
 pid_t pid = -1; // Variable global al principio del archivo
 int win_width = 300;
 int win_height = 550;
 int cur_x = 0, cur_y = 0;
+static void on_frame_done(void *data, struct wl_callback *cb, uint32_t time) {
+    wl_callback_destroy(cb);
+    frame_callback_pending = false; // Ya podemos volver a dibujar
+}
+
+static const struct wl_callback_listener frame_listener = { .done = on_frame_done };
 static int read_full(int sock, void *buf, size_t len)
 {
     size_t off = 0;
@@ -174,17 +161,16 @@ void *hilo_funcion(void *arg)
         }
 
         ZMetrics m;
-        if (read_full(sock, &m, sizeof(m)) <= 0)
+        if (read_full(sock, &m, sizeof(m)) > 0)
         {
-            close(sock);
-            continue;
+            pthread_mutex_lock(&mutex_metricas);
+            datos_compartidos = m; // Copiamos los datos, no el puntero
+            hay_datos_nuevos = true;
+            pthread_mutex_unlock(&mutex_metricas);
         }
+        close(sock);
+        usleep(2000000); // 2 segundos para no saturar
 
-    /*     printf("\033[H\033[J");
-        printf("CPU: %.1f\n", m.cpu_usage);
-        printf("RAM: %.2f / %.2f GB\n", m.mem_used_gb, m.mem_total_gb);
-        printf("TEMP: %d°C\n", m.temp_c);
-        fflush(stdout); */
         metricasZui = &m; // Asignamos el puntero a la estructura ZMetrics
         close(sock);
         usleep(200000);
@@ -197,8 +183,7 @@ void handle_vol_signal(int sig)
 {
     needs_redraw = true; // ← seguro, solo escribe un bool
 
-    // No hace falta escribir nada aquí.
-    // El simple hecho de que esta función exista evita que el programa muera.
+ 
 }
 
 char *kernelinfo(char *buffer, size_t size)
@@ -216,14 +201,7 @@ char *kernelinfo(char *buffer, size_t size)
         return buffer;
     }
 }
-/* char* midato(char* buffer) {
-     return buffer;
 
-} */
-
-// Uso:
-// char mi_buffer[256];
-// printf("%s\n", kernelinfo(mi_buffer, sizeof(mi_buffer)));
 int refesco(struct wl_surface *surf);
 int wayinit(int win_width, int win_height, int *retFlag);
 void start_zui_metrics_monitor()
@@ -242,28 +220,34 @@ void start_zui_metrics_monitor()
             exit(1);
 
         char linea[1024];
-       while (fgets(linea, sizeof(linea), fp) != NULL)
+        while (fgets(linea, sizeof(linea), fp) != NULL)
         {
             // 1. CPU -> a la memoria compartida
-            if (strstr(linea, "CPU:")) {
-                if (sscanf(strstr(linea, "CPU:"), "CPU: %f", &m_shared->cpu) == 1) { // <--- CAMBIO AQUÍ
+            if (strstr(linea, "CPU:"))
+            {
+                if (sscanf(strstr(linea, "CPU:"), "CPU: %f", &m_shared->cpu) == 1)
+                { // <--- CAMBIO AQUÍ
                     printf("Z-DEBUG: CPU EN SHARED -> %.1f\n", m_shared->cpu);
                 }
             }
 
             // 2. RAM -> a la memoria compartida
-            if (strstr(linea, "RAM:")) {
-                if (sscanf(strstr(linea, "RAM:"), "RAM: %f / %f", &m_shared->mem_u, &m_shared->mem_t) == 2) { // <--- CAMBIO AQUÍ
+            if (strstr(linea, "RAM:"))
+            {
+                if (sscanf(strstr(linea, "RAM:"), "RAM: %f / %f", &m_shared->mem_u, &m_shared->mem_t) == 2)
+                { // <--- CAMBIO AQUÍ
                     printf("Z-DEBUG: RAM EN SHARED -> %.2f\n", m_shared->mem_u);
                 }
             }
 
             // 3. TEMP -> a la memoria compartida
-            if (strstr(linea, "TEMP:")) {
-                if (sscanf(strstr(linea, "TEMP:"), "TEMP: %d", &m_shared->temp) == 1) { // <--- CAMBIO AQUÍ
+            if (strstr(linea, "TEMP:"))
+            {
+                if (sscanf(strstr(linea, "TEMP:"), "TEMP: %d", &m_shared->temp) == 1)
+                { // <--- CAMBIO AQUÍ
                     printf("Z-DEBUG: TEMP EN SHARED -> %d. Avisando...\n", m_shared->temp);
                     kill(getppid(), SIGUSR1);
-                    usleep(2000000); 
+                    usleep(2000000);
                 }
             }
         }
@@ -303,58 +287,7 @@ void start_zui_monitor()
     }
     // PADRE: Continúa su ejecución normal
 }
-/*
 
-void limit_fps(int fps)
-{
-    struct timespec req;
-    req.tv_sec = 0;
-    req.tv_nsec = 1000000000L / fps;
-    nanosleep(&req, NULL);
-} */
-/*
-void draw_logo_shm(cairo_t *cr, int x, int y)
-{
-    int w, h, channels;
-    unsigned char *pixels = stbi_load_from_memory(zaramagaos_png, zaramagaos_png_len, &w, &h, &channels, 4);
-
-    if (pixels)
-    {
-        // --- ARREGLO DE PIXELES (RGBA -> BGRA Premultiplicado) ---
-        for (int i = 0; i < w * h * 4; i += 4)
-        {
-            unsigned char r = pixels[i];
-            unsigned char g = pixels[i + 1];
-            unsigned char b = pixels[i + 2];
-            unsigned char a = pixels[i + 3];
-
-            // Cairo ARGB32 usa BGRA en memoria en sistemas Little Endian (x86)
-            // Y necesita premultiplicación (color * alpha / 255)
-            pixels[i] = (unsigned char)((b * a) / 255);
-            pixels[i + 1] = (unsigned char)((g * a) / 255);
-            pixels[i + 2] = (unsigned char)((r * a) / 255);
-            pixels[i + 3] = a;
-        }
-
-        int stride = cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, w);
-        cairo_surface_t *surf = cairo_image_surface_create_for_data(
-            pixels, CAIRO_FORMAT_ARGB32, w, h, stride);
-
-        cairo_save(cr);
-        cairo_translate(cr, x, y);
-
-        float escala = 100.0f / (float)w;
-        cairo_scale(cr, escala, escala);
-
-        cairo_set_source_surface(cr, surf, 0, 0);
-        cairo_pattern_set_filter(cairo_get_source(cr), CAIRO_FILTER_GOOD);
-        cairo_paint(cr);
-        cairo_restore(cr);
-
-        cairo_surface_destroy(surf);
-        stbi_image_free(pixels);
-    }
-} */
 void draw_logo_shm(cairo_t *cr,
                    int x, int y,
                    int max_w, int max_h)
@@ -504,6 +437,21 @@ void draw_nuklear_to_cairo(struct nk_context *ctx, cairo_t *cr)
 // --- RENDERIZADO ---
 static void render_frame(struct wl_surface *surface)
 {
+    static struct timespec last_draw = {0, 0};
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+
+    // Calculamos la diferencia en milisegundos
+    long delta_ms = (now.tv_sec - last_draw.tv_sec) * 1000 + 
+                    (now.tv_nsec - last_draw.tv_nsec) / 1000000;
+
+    // --- EL FILTRO ZARAMAGA ---
+    // Si han pasado menos de 33ms (aprox 30 FPS), ignoramos el render
+    // Puedes subirlo a 100ms si quieres que sea aún más ahorrador
+    if (delta_ms < 200) {
+        return; 
+    }
+    last_draw = now;
     zui_render(&ctx, win_width, win_height);
     needs_redraw = false; // 🔥 IMPORTANTE: Solo renderizamos cuando realmente haya que hacerlo
     cairo_surface_t *c_surf = cairo_image_surface_create_for_data(
@@ -519,6 +467,13 @@ static void render_frame(struct wl_surface *surface)
     wl_surface_attach(surface, buffer, 0, 0);
     wl_surface_damage(surface, 0, 0, win_width, win_height);
     wl_surface_commit(surface);
+    // 🔥 LA MAGIA: Pedimos el callback antes del commit
+    struct wl_callback *cb = wl_surface_frame(surface);
+    wl_callback_add_listener(cb, &frame_listener, NULL);
+    frame_callback_pending = true; 
+
+    wl_surface_commit(surface);
+    needs_redraw = false;
 }
 
 static float text_get_width(nk_handle handle, float height, const char *text, int len)
@@ -530,8 +485,17 @@ static void pointer_motion(void *data, struct wl_pointer *ptr, uint32_t time, wl
 {
     cur_x = wl_fixed_to_int(x);
     cur_y = wl_fixed_to_int(y);
+    
+    // 1. Informamos a Nuklear de la nueva posición
     nk_input_motion(&ctx, cur_x, cur_y);
-    render_frame((struct wl_surface *)data);
+
+    // 2. Comprobamos si el ratón está sobre algo que Nuklear reconozca
+    // Esto evita que redibujes cuando el ratón está en el "espacio vacío"
+    if (nk_window_is_any_hovered(&ctx)) {
+        needs_redraw = true; 
+    }else {
+        needs_redraw = false; // No hay interacción, no redibujamos
+    }
 }
 static void noop() {}
 
@@ -571,7 +535,7 @@ static void layer_surface_configure(void *data, struct zwlr_layer_surface_v1 *ls
 
     win_width = width;
     win_height = height;
-    needs_redraw = true;
+    //needs_redraw = true;
     // ESTO ES VITAL: Sin esto el padre nunca dibujará
     configured = true;
     printf(" despues layer configrewinheight:%f \n", win_height);
@@ -603,10 +567,7 @@ int main(int argc, char **argv)
         win_height = atoi(argv[2]);
     }
     signal(SIGUSR1, handle_vol_signal);
-    // printf("Z-DEBUG: Intentando primera lectura de métricas...\n");
-    // zui_update_metrics(); // <--- Llamada única antes del bucle
-    // printf("Z-DEBUG: Lectura completada.\n");
-    // Uso:
+    
     m_shared = mmap(NULL, sizeof(struct shared_metrics), PROT_READ | PROT_WRITE,
                     MAP_SHARED | MAP_ANONYMOUS, -1, 0);
     if (m_shared == MAP_FAILED)
@@ -620,16 +581,16 @@ int main(int argc, char **argv)
     *mi_buffer = kernelinfo(su_buffer, sizeof(su_buffer));
     // monitor_pactl_simple(); // Iniciamos el monitor de volumen en un proceso aparte
     start_zui_monitor();
-    //start_zui_metrics_monitor(); // Iniciamos el monitor de volumen en un proceso aparte
-    // --- CONEXIÓN WAYLAND ---
+    // start_zui_metrics_monitor(); // Iniciamos el monitor de volumen en un proceso aparte
+    //  --- CONEXIÓN WAYLAND ---
     int retVal = wayinit(win_width, win_height, &retFlag);
     if (retFlag == 1)
         return retVal;
 
     // --- EL BUCLE DE ACERO (30 FPS) ---
     printf("ZawayinitramagaOS: Motor de refresco sólido iniciado.\n");
-    //iniciohilo
-     pthread_t hilo; // Declaramos la variable del hilo
+    // iniciohilo
+    pthread_t hilo; // Declaramos la variable del hilo
     int valor = 42; // Valor que pasaremos a la función
 
     // Creamos el hilo, pasándole la función y el argumento
@@ -702,62 +663,6 @@ int wayinit(int win_width, int win_height, int *retFlag)
     *retFlag = 0;
     return 0;
 }
-
-/* int refesco(struct wl_surface *surf)
-{
-    printf("ZaramagaOS: Motor de refresco optimizado (CPU 0%%).\n");
-    fflush(stdout);
-
-    while (1)
-    {
-        // 1. Preparar Wayland para leer eventos
-        while (wl_display_prepare_read(display) != 0)
-        {
-            wl_display_dispatch_pending(display);
-        }
-        wl_display_flush(display);
-
-        // 2. Dormir el proceso hasta que pase algo (Evento Wayland o Señal SIGUSR1)
-        // La estructura es struct pollfd (sin guion bajo)
-        struct pollfd pfd = {.fd = wl_display_get_fd(display), .events = POLLIN};
-
-        int ret = poll(&pfd, 1, -1); // Espera infinita sin gastar CPU
-
-        if (ret < 0)
-        {
-            if (errno == EINTR)
-            {
-                // ¡SEÑAL DETECTADA! (El hijo avisó del volumen)
-                wl_display_cancel_read(display);
-                if (configured)
-                    render_frame(surf);
-                continue;
-            }
-            // Error real
-            wl_display_cancel_read(display);
-            break;
-        }
-
-        // 3. Si hay datos en el socket de Wayland, leerlos
-        if (pfd.revents & POLLIN)
-        {
-            wl_display_read_events(display);
-        }
-        else
-        {
-            wl_display_cancel_read(display);
-        }
-
-        // 4. Procesar lo que hayamos leído y dibujar
-        wl_display_dispatch_pending(display);
-        if (configured && needs_redraw)
-        {
-            render_frame(surf);
-            needs_redraw = false;
-        }
-    }
-    return 0;
-} */
 int refesco(struct wl_surface *surf)
 {
     printf("ZaramagaOS: Motor de refresco optimizado (CPU 0%%).\n");

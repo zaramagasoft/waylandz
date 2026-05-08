@@ -27,27 +27,6 @@ static float sys_cpu = 0.0f;
 static float sys_mem_u = 0.0f;
 static float sys_mem_t = 0.0f;
 static int sys_temp = 0;
-
-// Estructuras del protocolo (basadas en tu cliente)
-/* typedef struct
-{
-    char magic[4];
-    unsigned char version;
-    unsigned char type;
-    unsigned short size;
-} ZHeader;
-
-typedef struct
-{
-    float cpu_usage;
-    float mem_used_gb;
-    float mem_total_gb;
-    int temp_c;
-    char cpu_model[64];
-    char mobo_name[64];
-    char gpu_name[64];
-} ZMetrics; */
-// Asegúrate de incluir los headers necesarios para la estructura
 struct shared_metrics
 {
     float cpu;
@@ -65,6 +44,7 @@ static struct nk_color phosphor_green;
 static struct nk_color dark_green;
 struct nk_style_button estilo_original;
 struct nk_style_button miestilo; // ✅ Copia directa
+int contador=0;
 
 static float vol_value = 0.6f;
 // static float bright_value = 0.8f;
@@ -91,61 +71,6 @@ static int zui_read_full(int sock, void *buf, size_t len)
 
 #include <errno.h>
 
-/* void zui_update_metrics() {
-    printf("Z-DEBUG: Intentando conectar al socket de métricas...\n");
-    int sock = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (sock < 0) return;
-
-    // Timeout de red muy bajo para que el Dock no se "congele" esperando
-    struct timeval tv = {0, 100000000}; // 10ms
-    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
-
-    struct sockaddr_un addr;
-    memset(&addr, 0, sizeof(addr));
-    addr.sun_family = AF_UNIX;
-    strncpy(addr.sun_path, "/tmp/zmetrics.sock", sizeof(addr.sun_path) - 1);
-
-    // Intentamos conectar UNA vez en este frame
-    printf("Z-DEBUG: Intentando conectar al socket de métricas...\n");
-    if (connect(sock, (struct sockaddr *)&addr, sizeof(addr)) == 0) {
-        ZHeader h;
-        ZMetrics m;
-        usleep(2000);
-
-        printf("Z-DEBUG: Conexión exitosa, leyendo datos...\n");
-        // Si el cliente.c lee bien, aquí usamos read directo
-        // Leemos cabecera y luego datos
-        if (read(sock, &h, sizeof(h)) == sizeof(h)) {
-            if (read(sock, &m, sizeof(m)) == sizeof(m)) {
-                // ÉXITO: Pasamos los datos a las variables globales
-                printf("Z-DEBUG: Métricas recibidas: CPU=%.1f%%, RAM=%.2f/%.2fGB, Temp=%d°C\n",
-                       m.cpu_usage, m.mem_used_gb, m.mem_total_gb, m.temp_c);
-                sys_cpu = m.cpu_usage;
-                sys_mem_u = m.mem_used_gb;
-                sys_mem_t = m.mem_total_gb;
-                sys_temp = m.temp_c;
-
-                // Esto imprimirá en la terminal del Dock cuando conecte
-                printf("\r[Z-GUI] CONECTADO: CPU %.1f%% | RAM %.2fGB", sys_cpu, sys_mem_u);
-                fflush(stdout);
-            }else
-            {
-                printf("Z-DEBUG: Error al leer métricas completas: %s\n", strerror(errno));
-            }
-
-        }else
-        {
-            printf("Z-DEBUG: Error al leer cabecera: %s\n", strerror(errno));
-        }
-
-    } else
-    {
-        printf("Z-DEBUG: No se pudo conectar al socket de métricas: %s\n", strerror(errno));
-    }
-
-    // Si no conecta, simplemente cerramos y el siguiente frame (en 16ms) lo volverá a intentar
-    close(sock);
-} */
 // 🔊 VOLUMEN
 static void zui_set_volume(float v)
 {
@@ -218,12 +143,7 @@ void zui_set_style(struct nk_context *ctx)
     ctx->style.button.text_normal = phosphor_green;
     ctx->style.button.text_hover = nk_rgb(255, 255, 255);
 
-    /*  // SLIDERS (Estos campos son de tipo struct nk_color, no nk_style_item)
-     ctx->style.slider.bar_normal = dark_green;
-     ctx->style.slider.bar_active = phosphor_green;
-     ctx->style.slider.cursor_size = nk_vec2(20, 20); // Un cursor más grande y cuadrado
-     ctx->style.slider.rounding = 0;                  // Sin bordes redondeados, todo cuadrado
-  */
+  
     // SLIDERS (Corregido para ZaramagaOS)
     ctx->style.slider.bar_normal = dark_green;
     ctx->style.slider.bar_active = phosphor_green;                            // Color de la barra "rellena"
@@ -242,7 +162,7 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
     estilo_original = ctx->style.button; // Guardamos el estilo original del botón
     miestilo = estilo_original;          // Inicializamos mi_estilo con el original
     printf("winheightzUI:%f \n", win_height);
-    // printf("zui_render");
+    printf("zui_render %d\n", contador++  );
     // fflush(stdout); // Esto te ayudará a ver cuándo se llama a zui_render
     static float last_sys_vol = -1.0f;
     // --- LÓGICA DE TIEMPO ---
