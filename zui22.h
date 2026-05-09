@@ -175,13 +175,20 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
     strftime(date_str, sizeof(date_str), "%d %b %Y", timeinfo);
     // strftime(date_str, sizeof(date_str), "%d %b", timeinfo);
     //////zmetrics////////////
-    while (metricasZui == NULL)
+    /* while (metricasZui == NULL)
     {
+        if (metricasZui== NULL)
+        {
+            printf("Métricas aún no disponibles en zui_render, esperando...\n");
+        }
+
         printf("Esperando a que metricasZui esté disponible...\n");
         usleep(2000000); // Espera 100ms antes de volver a comprobar
     }
     printf("Métricas en zui_render: CPU=%.1f%%, RAM=%.2f/%.2fGB, Temp=%d°C\n",
            metricasZui->cpu_usage, metricasZui->mem_used_gb, metricasZui->mem_total_gb, metricasZui->temp_c);
+ */
+   
 
     float sys_vol = GetSystemVolume() / 100.0f; // siempre leer sistema
     // Dentro de tu zui_render o donde leas el volumen:
@@ -451,6 +458,12 @@ int kernelraw(struct nk_context *ctx, float y, float win_width, float middle_h)
 }
 int metricsDraw(struct nk_context *ctx, float y, float win_width, float footer_h)
 {
+    if (metricasZui==NULL || metricasZui->temp_c > 150) // Verificamos que metricasZui esté listo y tenga datos válidos
+    {
+        
+        return y;
+    }
+    
     printf("Entrando a metricsDraw, footer_h = %f\n", y);
     float row_height = 20.0f; // La altura que reservamos para este bloque
 

@@ -71,6 +71,8 @@ uint32_t *shm_data_global;
 static int retFlag = 0;
 static bool needs_redraw = false;
 char *mi_buffer[256];
+pid_t pid_metrics = -1;
+pid_t pid_audio = -1;
 
 ZMetrics datos_compartidos;
 pthread_mutex_t mutex_metricas = PTHREAD_MUTEX_INITIALIZER;
@@ -122,7 +124,7 @@ void *hilo_funcion(void *arg)
 {
 
     int valor = *(int *)arg;
-    //printf("Hola desde el hilo!\n");
+    // printf("Hola desde el hilo!\n");
 
     int sock = socket(AF_UNIX, SOCK_STREAM, 0);
     if (sock < 0)
@@ -202,7 +204,7 @@ char *kernelinfo(char *buffer, size_t size)
 
 int refesco(struct wl_surface *surf);
 int wayinit(int win_width, int win_height, int *retFlag);
-void start_zui_metrics_monitor()
+/* void start_zui_metrics_monitor()
 {
     pid_t m_pid = fork();
     if (m_pid < 0)
@@ -252,14 +254,14 @@ void start_zui_metrics_monitor()
         pclose(fp);
         exit(0);
     }
-}
-void start_zmetrics_monitor()
+} */
+ void start_zmetrics_monitor()
 {
-    pid = fork();
-    if (pid < 0)
+    pid_metrics = fork();
+    if (pid_metrics < 0)
         return;
 
-    if (pid == 0)
+    if (pid_metrics == 0)
     {
 #include <sys/prctl.h>
         prctl(PR_SET_PDEATHSIG, SIGTERM);
@@ -269,23 +271,13 @@ void start_zmetrics_monitor()
         if (!fp)
             exit(1);
 
-        /* //char linea[1024];
-        while (fgets(linea, sizeof(linea), fp) != NULL)
-        {
-            if (strstr(linea, "change") && strstr(linea, "sink"))
-            {
-                printf("ZaramagaOS: Volumen cambiado, avisando al padre...\n");
-                // EL CODAZO: Avisa al padre para que se despierte
-                kill(getppid(), SIGUSR1);
-                usleep(500000);
-            }
-        } */
         pclose(fp);
         exit(0);
     }
     // PADRE: Continúa su ejecución normal
-}
-void start_zui_monitor()
+} 
+
+/* void start_zui_monitor()
 {
     pid = fork();
     if (pid < 0)
@@ -316,6 +308,37 @@ void start_zui_monitor()
         exit(0);
     }
     // PADRE: Continúa su ejecución normal
+} */
+void start_zui_monitor() {
+    pid_t pid_audio = fork();
+    
+    if (pid_audio < 0) return;
+
+    if (pid_audio == 0) {
+        // HIJO: Configurar muerte por herencia
+        prctl(PR_SET_PDEATHSIG, SIGTERM);
+        
+        // Ignorar la señal que él mismo provoca en el padre para evitar bucles
+        signal(SIGUSR1, SIG_IGN);
+
+        // Usamos stdbuf para que pactl no guarde datos en el buffer y el aviso sea instantáneo
+        FILE *fp = popen("stdbuf -oL pactl subscribe", "r");
+        if (!fp) exit(1);
+
+        char linea[1024];
+        // Este bucle no consume CPU, está bloqueado esperando texto
+        while (fgets(linea, sizeof(linea), fp) != NULL) {
+            if (strstr(linea, "sink") && strstr(linea, "change")) {
+                // El "Codazo" al padre
+                kill(getppid(), SIGUSR1);
+                
+                // Pequeña pausa para no ametrallar al padre si mueves el slider rápido
+                usleep(200000); 
+            }
+        }
+        pclose(fp);
+        exit(0);
+    }
 }
 
 void draw_logo_shm(cairo_t *cr,
