@@ -289,8 +289,12 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
             // cambiodecolor(ctx);
 
             if (nk_button_label(ctx, "\uf01e"))
-
+            {
                 show_confirm = 1;
+                // Forzamos a Gamescope a recuperar el foco
+                nk_input_begin(ctx);
+                nk_input_end(ctx);
+            }
 
             // ctx->style.button = estilo_original;
             //  EXIT
@@ -468,16 +472,16 @@ int metricsDraw(struct nk_context *ctx, float y, float win_width, float footer_h
     strcat(icoCalendario, date_str);
     strcat(icoReloj, icoCalendario);
      */
-    //char metricasall[100];
-    //char cpu_str[20] = "", mem_str[30] = "\uefc5 ", temp_str[30] = "\uef2b ";
-    // cpu_str="CPU: %.1f%%";
+    // char metricasall[100];
+    // char cpu_str[20] = "", mem_str[30] = "\uefc5 ", temp_str[30] = "\uef2b ";
+    //  cpu_str="CPU: %.1f%%";
     char metricasall[128]; // Asegúrate de que sea lo bastante grande
 
     // Formateamos todo de una sola vez
     snprintf(metricasall, sizeof(metricasall),
              "\uf4bccpu:%.0f%% \uefc5ram:%.0f% \uef2b%d°C",
              metricasZui->cpu_usage,
-             metricasZui->mem_used_gb/metricasZui->mem_total_gb*100.0f,
+             metricasZui->mem_used_gb / metricasZui->mem_total_gb * 100.0f,
              metricasZui->temp_c);
 
     // Ahora Nuklear lo recibirá perfecto

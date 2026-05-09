@@ -1,9 +1,6 @@
+en home lanzador zsteam.sh y sway zconfig2 comprobado
 Version hilo 
-gcc mainN22.c  wlr-layer-shell-unstable-v1.c xdg-shell.c -o zmenun223 \                            32.868s
-    $(pkg-config --cflags --libs wayland-client cairo) \
-    -lm -O2 -pthread
-
-
+gcc mainN22.c wlr-layer-shell-unstable-v1.c xdg-shell.c -o zmenun223     $(pkg-config --cflags --libs wayland-client cairo)     -lm -O2 -lpthread
 TO-DO aniadir cliente a zmenun222
  gcc mainN22.c wlr-layer-shell-unstable-v1.c xdg-shell.c -o zmenun222     $(pkg-config --cflags --libs wayland-client cairo)     -lm -O2
 [alb@zaramagaOS waylandz]$ peleando

@@ -253,6 +253,38 @@ void start_zui_metrics_monitor()
         exit(0);
     }
 }
+void start_zmetrics_monitor()
+{
+    pid = fork();
+    if (pid < 0)
+        return;
+
+    if (pid == 0)
+    {
+#include <sys/prctl.h>
+        prctl(PR_SET_PDEATHSIG, SIGTERM);
+        // HIJO: Solo vigila y avisa
+        signal(SIGUSR1, SIG_IGN);
+        FILE *fp = popen("./zmetrics-server", "r");
+        if (!fp)
+            exit(1);
+
+        /* //char linea[1024];
+        while (fgets(linea, sizeof(linea), fp) != NULL)
+        {
+            if (strstr(linea, "change") && strstr(linea, "sink"))
+            {
+                printf("ZaramagaOS: Volumen cambiado, avisando al padre...\n");
+                // EL CODAZO: Avisa al padre para que se despierte
+                kill(getppid(), SIGUSR1);
+                usleep(500000);
+            }
+        } */
+        pclose(fp);
+        exit(0);
+    }
+    // PADRE: Continúa su ejecución normal
+}
 void start_zui_monitor()
 {
     pid = fork();
@@ -446,7 +478,7 @@ static void render_frame(struct wl_surface *surface)
     // --- EL FILTRO ZARAMAGA ---
     // Si han pasado menos de 33ms (aprox 30 FPS), ignoramos el render
     // Puedes subirlo a 100ms si quieres que sea aún más ahorrador
-    if (delta_ms < 200)
+    if (delta_ms < 100)
     {
         return;
     }
@@ -585,6 +617,7 @@ int main(int argc, char **argv)
     start_zui_monitor();
     // start_zui_metrics_monitor(); // Iniciamos el monitor de volumen en un proceso aparte
     //  --- CONEXIÓN WAYLAND ---
+    start_zmetrics_monitor(); // Iniciamos el monitor de métricas en un proceso aparte
     int retVal = wayinit(win_width, win_height, &retFlag);
     if (retFlag == 1)
         return retVal;

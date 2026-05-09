@@ -9,7 +9,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <signal.h>
-
+#include <poll.h>
 
 #define SOCKET_PATH "/tmp/zmetrics.sock"
 
@@ -91,7 +91,7 @@ void zsock_send_metrics(int sock, ZMetrics *m)
 
 int main()
 {
-    signal(SIGPIPE, SIG_IGN);  // 🔥 clave
+    signal(SIGPIPE, SIG_IGN); // 🔥 clave
     ZMetrics m;
 
     metrics_init(&m);
@@ -110,15 +110,54 @@ int main()
 
     while (1)
     {
-        metrics_update(&m);
+        struct pollfd pfd = {
+            .fd = sock,
+            .events = POLLIN};
 
-        zsock_send_metrics(sock, &m);
+        // duerme hasta 2 segundos o hasta conexión
+        int ret = poll(&pfd, 1, 2000);
 
-        printf("\rCPU: %.1f%% | RAM: %.2f/%.1f GB | TEMP: %d°C    ",
-               m.cpu_usage, m.mem_used_gb, m.mem_total_gb, m.temp_c);
+        if (ret < 0)
+        {
+            perror("poll");
+            break;
+        }
 
-        fflush(stdout);
-        sleep(2);
+        // timeout -> actualizar métricas
+        if (ret == 0)
+        {
+            metrics_update(&m);
+
+            printf("\rCPU: %.1f%% | RAM: %.2f/%.1f GB | TEMP: %d°C    ",
+                   m.cpu_usage,
+                   m.mem_used_gb,
+                   m.mem_total_gb,
+                   m.temp_c);
+
+            fflush(stdout);
+
+            continue;
+        }
+
+        // cliente conectado
+        if (pfd.revents & POLLIN)
+        {
+            int client = accept(sock, NULL, NULL);
+
+            if (client >= 0)
+            {
+                ZHeader h = {
+                    .magic = {'Z', 'M', 'E', 'T'},
+                    .version = 1,
+                    .type = 1,
+                    .size = sizeof(ZMetrics)};
+
+                write(client, &h, sizeof(h));
+                write(client, &m, sizeof(ZMetrics));
+
+                close(client);
+            }
+        }
     }
 
     return 0;
