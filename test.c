@@ -10,8 +10,9 @@
 #include <errno.h>
 #include <signal.h>
 #include <poll.h>
-
+#include <stdlib.h>
 #define SOCKET_PATH "/tmp/zmetrics.sock"
+
 
 typedef struct
 {
@@ -69,7 +70,7 @@ int zsock_init()
     return sock;
 }
 
-void zsock_send_metrics(int sock, ZMetrics *m)
+/* void zsock_send_metrics(int sock, ZMetrics *m)
 {
 
     int client = accept(sock, NULL, NULL);
@@ -87,6 +88,17 @@ void zsock_send_metrics(int sock, ZMetrics *m)
     write(client, m, sizeof(ZMetrics));
 
     close(client); // ✔ correcto en este modelo
+} */
+void zsock_send_metrics(int client_fd, ZMetrics *m)
+{
+    ZHeader h = {
+        .magic = {'Z', 'M', 'E', 'T'},
+        .version = 1,
+        .type = 1,
+        .size = sizeof(ZMetrics)};
+
+    write(client_fd, &h, sizeof(h));
+    write(client_fd, m, sizeof(ZMetrics));
 }
 
 int main()
@@ -155,6 +167,33 @@ int main()
                 write(client, &h, sizeof(h));
                 write(client, &m, sizeof(ZMetrics));
 
+                close(client);
+            }
+        }
+        // ... dentro del while(1) ...
+        if (pfd.revents & POLLIN)
+        {
+            int client = accept(sock, NULL, NULL);
+            if (client >= 0)
+            {
+                // --- 1. INTENTAR LEER COMANDO DEL CLIENTE ---
+                ZCommand cmd;
+                // MSG_DONTWAIT es clave: si el cliente no mandó nada, no nos quedamos colgados
+                ssize_t r = recv(client, &cmd, sizeof(ZCommand), MSG_DONTWAIT);
+
+                if (r == sizeof(ZCommand))
+                {
+                    printf("\n[ZMETRICS] Orden recibida: %d\n", cmd.opcode);
+                    if (cmd.opcode == 1)
+                        system("reboot");
+                    if (cmd.opcode == 2)
+                        system("poweroff");
+                }
+
+                // --- 2. ENVIAR MÉTRICAS ---
+                zsock_send_metrics(client, &m);
+
+                // --- 3. CERRAR ---
                 close(client);
             }
         }

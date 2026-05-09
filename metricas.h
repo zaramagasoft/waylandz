@@ -10,7 +10,11 @@ typedef struct {
     char mobo_name[64];
     char gpu_name[64];
 } ZMetrics;
-
+typedef struct
+{
+    int opcode; // 1: REBOOT, 2: POWEROFF, 3: NADA
+    char payload[256];
+} ZCommand;
 void metrics_init(ZMetrics *m);
 void metrics_update(ZMetrics *m);
 
