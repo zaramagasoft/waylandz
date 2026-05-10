@@ -7,8 +7,7 @@
 #include <sys/un.h>
 
 #define SOCKET_PATH "/tmp/menuos.sock"
-
-int main()
+int connect_to_menuos()
 {
     int sock;
 
@@ -73,6 +72,10 @@ int main()
     }
 
     close(sock);
-
+}
+int main()
+{
+    
+    int sock = connect_to_menuos();
     return 0;
 }

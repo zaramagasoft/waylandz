@@ -7,6 +7,24 @@
 #include <sys/un.h>
 
 #define SOCKET_PATH "/tmp/menuos.sock"
+int mandar_mensaje(const int sock)
+{
+    char buffer[256];
+    memset(buffer, 0, sizeof(buffer));
+
+        printf("Mensaje: ");
+
+        fgets(buffer, sizeof(buffer), stdin);
+
+        if (strncmp(buffer, "exit", 4) == 0)
+            return 0;
+
+        write(sock,
+              buffer,
+              strlen(buffer));
+
+        memset(buffer, 0, sizeof(buffer));
+}
 int main()
 {
     int server_fd;
@@ -61,6 +79,8 @@ int main()
         write(client_fd,
               response,
               strlen(response)-1);
+
+        mandar_mensaje(client_fd);      
     }
     close(client_fd);
     close(server_fd);
