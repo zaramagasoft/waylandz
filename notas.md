@@ -1,3 +1,11 @@
+CONTRASTE,BRILLO,GAMMA
+wl-gammactl -c 1,000 -b 1,000 -g 2,000
+ojo, se necesita instalar wl-gammactl -c via yay y he tenido que # Verificar que el enlace simbólico sigue existiendo
+ls -l /usr/lib/pkgconfig/wlroots.pc
+
+# Si se pierde, recrearlo
+sudo ln -sf /usr/lib/pkgconfig/wlroots-0.21.pc /usr/lib/pkgconfig/wlroots.pc
+# Si no reconoce wlroots, creamos un enlace simbolico 
 en home lanzador zsteam.sh y sway zconfig2 comprobado
 Version hilo 
 gcc mainN22.c wlr-layer-shell-unstable-v1.c xdg-shell.c -o zmenun223     $(pkg-config --cflags --libs wayland-client cairo)     -lm -O2 -lpthread

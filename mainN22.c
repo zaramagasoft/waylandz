@@ -73,6 +73,10 @@ static bool needs_redraw = false;
 char *mi_buffer[256];
 pid_t pid_metrics = -1;
 pid_t pid_audio = -1;
+pthread_t hilo;
+
+int win_width = 300;
+int win_height = 1080;
 
 ZMetrics datos_compartidos;
 pthread_mutex_t mutex_metricas = PTHREAD_MUTEX_INITIALIZER;
@@ -91,16 +95,41 @@ bool frame_callback_pending = false; // Para evitar múltiples callbacks pendien
 struct shared_metrics *m_shared;     // Variable globalz
 // ojo a estudiar bien esto, es la clave para no hacer render cada vez que recibimos un configure, sino solo cuando realmente haya que redibujar
 pid_t pid = -1; // Variable global al principio del archivo
-int win_width = 300;
-int win_height = 550;
+//int win_width = 300;
+//int win_height = 550;
 int cur_x = 0, cur_y = 0;
 void prueba()
 {
-   printf("ZaramagaOS: Saliendo, matando procesos hijos...\n");
+    char cmd[256];
+
+    snprintf(cmd, sizeof(cmd),
+             "ps -o pid,ppid,pgid,comm -g %d",
+             getpgrp());
+
+    system(cmd);
+    printf("Mi PID  = %d\n", getpid());
+    printf("Mi PGID = %d\n", getpgrp());
+    printf("metrics = %d\n", pid_metrics);
+    printf("ZaramagaOS: Saliendo, matando procesos hijos...\n");
+
+    printf("pid_metrics=%d\n", pid_metrics);
+    printf("pid_audio=%d\n", pid_audio);
+    printf("hilo=%d\n", hilo);
+    kill(-getpgrp(), SIGTERM);
+    if (hilo > 0)
+    {
+        kill(hilo, SIGTERM);
+        waitpid(hilo, NULL, 0);
+        printf("ZaramagaOS: Hilo de métricas terminado.\n");
+    }
     if (pid_metrics > 0)
     {
         kill(pid_metrics, SIGTERM);
         waitpid(pid_metrics, NULL, 0);
+    }
+    if (kill(pid_metrics, SIGKILL) == -1)
+    {
+        perror("kill");
     }
     if (pid_audio > 0)
     {
@@ -269,7 +298,7 @@ int wayinit(int win_width, int win_height, int *retFlag);
         exit(0);
     }
 } */
- void start_zmetrics_monitor()
+void start_zmetrics_monitor()
 {
     pid_metrics = fork();
     if (pid_metrics < 0)
@@ -289,7 +318,7 @@ int wayinit(int win_width, int win_height, int *retFlag);
         exit(0);
     }
     // PADRE: Continúa su ejecución normal
-} 
+}
 
 /* void start_zui_monitor()
 {
@@ -323,31 +352,37 @@ int wayinit(int win_width, int win_height, int *retFlag);
     }
     // PADRE: Continúa su ejecución normal
 } */
-void start_zui_monitor() {
+void start_zui_monitor()
+{
     pid_t pid_audio = fork();
-    
-    if (pid_audio < 0) return;
 
-    if (pid_audio == 0) {
+    if (pid_audio < 0)
+        return;
+
+    if (pid_audio == 0)
+    {
         // HIJO: Configurar muerte por herencia
         prctl(PR_SET_PDEATHSIG, SIGTERM);
-        
+
         // Ignorar la señal que él mismo provoca en el padre para evitar bucles
         signal(SIGUSR1, SIG_IGN);
 
         // Usamos stdbuf para que pactl no guarde datos en el buffer y el aviso sea instantáneo
         FILE *fp = popen("stdbuf -oL pactl subscribe", "r");
-        if (!fp) exit(1);
+        if (!fp)
+            exit(1);
 
         char linea[1024];
         // Este bucle no consume CPU, está bloqueado esperando texto
-        while (fgets(linea, sizeof(linea), fp) != NULL) {
-            if (strstr(linea, "sink") && strstr(linea, "change")) {
+        while (fgets(linea, sizeof(linea), fp) != NULL)
+        {
+            if (strstr(linea, "sink") && strstr(linea, "change"))
+            {
                 // El "Codazo" al padre
                 kill(getppid(), SIGUSR1);
-                
+
                 // Pequeña pausa para no ametrallar al padre si mueves el slider rápido
-                usleep(200000); 
+                usleep(200000);
             }
         }
         pclose(fp);
@@ -456,6 +491,14 @@ void draw_nuklear_to_cairo(struct nk_context *ctx, cairo_t *cr)
                                    CAIRO_FONT_WEIGHT_NORMAL);
 
             cairo_set_font_size(cr, t->height);
+            //printf("win_height=%d\n", win_height);
+            if (win_height>=700)
+            {
+                /* code */
+                cairo_set_font_size(cr, t->height * 1.2);
+            }
+            
+            // cairo_set_font_size(cr, t->height * 1.5);
 
             cairo_move_to(cr, t->x, t->y + t->height - 5);
             cairo_show_text(cr, (const char *)t->string);
@@ -629,9 +672,6 @@ static void global_registry_handler(void *data, struct wl_registry *reg, uint32_
 int main(int argc, char **argv)
 {
 
-    int win_width = 300;
-    int win_height = 1080;
-
     if (argc >= 3)
     {
         win_width = atoi(argv[1]);
@@ -662,7 +702,7 @@ int main(int argc, char **argv)
     // --- EL BUCLE DE ACERO (30 FPS) ---
     printf("ZawayinitramagaOS: Motor de refresco sólido iniciado.\n");
     // iniciohilo
-    pthread_t hilo; // Declaramos la variable del hilo
+    // pthread_t hilo; // Declaramos la variable del hilo
     int valor = 42; // Valor que pasaremos a la función
     atexit(prueba); // Aseguramos que el hilo se cancele al salir del program
     // Creamos el hilo, pasándole la función y el argumento
