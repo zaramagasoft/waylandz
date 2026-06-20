@@ -1,4 +1,7 @@
-# ojo, vamos a intentar con el protocolo
+# ojo, instalamos el service sudo pacman -S --needed glib2-devel
+ # y despues yay -S wlr-gamma-service-git
+
+
 **CONTRASTE,BRILLO,GAMMA
 **wl-gammactl -c 1,000 -b 1,000 -g 2,000
 ojo, se necesita instalar wl-gammactl -c via yay y he tenido que # Verificar que el enlace simbólico sigue existiendo
