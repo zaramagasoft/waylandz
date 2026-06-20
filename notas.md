@@ -1,6 +1,7 @@
 # ojo, instalamos el service sudo pacman -S --needed glib2-devel
  # y despues yay -S wlr-gamma-service-git
-
+# Simplemente ejecuta el servicio en una terminal
+LD_PRELOAD=/usr/lib/libasan.so.8 /usr/bin/wlr-gamma-service
 
 **CONTRASTE,BRILLO,GAMMA
 **wl-gammactl -c 1,000 -b 1,000 -g 2,000
