@@ -27,6 +27,9 @@ static float sys_cpu = 0.0f;
 static float sys_mem_u = 0.0f;
 static float sys_mem_t = 0.0f;
 static int sys_temp = 0;
+
+//prueba puntero a struct compartida
+extern struct wl_surface *surfGlobal;
 struct shared_metrics
 {
     float cpu;
@@ -308,7 +311,7 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
             nk_layout_space_push(ctx, nk_rect(padding * 2 + btn_w_third, middle_h, btn_w_third, btn_h));
             if (nk_button_label(ctx, "\uf08b"))
             {
-                kill(-getpgrp(), SIGTERM);
+                //kill(-getpgrp(), SIGTERM);
                 exit(0);
             }
 

@@ -94,6 +94,20 @@ pid_t pid = -1; // Variable global al principio del archivo
 int win_width = 300;
 int win_height = 550;
 int cur_x = 0, cur_y = 0;
+void prueba()
+{
+   printf("ZaramagaOS: Saliendo, matando procesos hijos...\n");
+    if (pid_metrics > 0)
+    {
+        kill(pid_metrics, SIGTERM);
+        waitpid(pid_metrics, NULL, 0);
+    }
+    if (pid_audio > 0)
+    {
+        kill(pid_audio, SIGTERM);
+        waitpid(pid_audio, NULL, 0);
+    }
+}
 static void on_frame_done(void *data, struct wl_callback *cb, uint32_t time)
 {
     wl_callback_destroy(cb);
@@ -650,7 +664,7 @@ int main(int argc, char **argv)
     // iniciohilo
     pthread_t hilo; // Declaramos la variable del hilo
     int valor = 42; // Valor que pasaremos a la función
-
+    atexit(prueba); // Aseguramos que el hilo se cancele al salir del program
     // Creamos el hilo, pasándole la función y el argumento
     if (pthread_create(&hilo, NULL, hilo_funcion, &valor))
     {
@@ -690,10 +704,10 @@ int wayinit(int win_width, int win_height, int *retFlag)
     {
         nk_style_set_font(&ctx, &jetbrains->handle);
     }
-
+    struct wl_surface *surfGlobal;
     // --- CONFIGURAR SUPERFICIE & LAYER SHELL ---
     surf = wl_compositor_create_surface(compositor);
-
+    surfGlobal = surf;
     int size = win_width * win_height * 4;
     int fd = memfd_create("shm", MFD_CLOEXEC);
     ftruncate(fd, size);
