@@ -1,5 +1,6 @@
-CONTRASTE,BRILLO,GAMMA
-wl-gammactl -c 1,000 -b 1,000 -g 2,000
+# ojo, vamos a intentar con el protocolo
+**CONTRASTE,BRILLO,GAMMA
+**wl-gammactl -c 1,000 -b 1,000 -g 2,000
 ojo, se necesita instalar wl-gammactl -c via yay y he tenido que # Verificar que el enlace simbólico sigue existiendo
 ls -l /usr/lib/pkgconfig/wlroots.pc
 
