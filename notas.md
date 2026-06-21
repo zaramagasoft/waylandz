@@ -1,13 +1,4 @@
-# ojo, instalamos el service sudo pacman -S --needed glib2-devel
- # y despues yay -S wlr-gamma-service-git
-# Simplemente ejecuta el servicio en una terminal
-LD_PRELOAD=/usr/lib/libasan.so.8 /usr/bin/wlr-gamma-service
-
-**CONTRASTE,BRILLO,GAMMA
-**wl-gammactl -c 1,000 -b 1,000 -g 2,000
-ojo, se necesita instalar wl-gammactl -c via yay y he tenido que # Verificar que el enlace simbólico sigue existiendo
-ls -l /usr/lib/pkgconfig/wlroots.pc
-
+exec_always --no-startup-id /home/alb/wl-gammactl/src/motor_gamma en sway y https://github.com/zaramagasoft/wl-gammactl/blob/4742cb9c7507247678affa4920779774e41c2b8c/README.md
 # Si se pierde, recrearlo
 sudo ln -sf /usr/lib/pkgconfig/wlroots-0.21.pc /usr/lib/pkgconfig/wlroots.pc
 # Si no reconoce wlroots, creamos un enlace simbolico 
