@@ -17,7 +17,8 @@ extern ZMetrics *metricasZui;
 #include <string.h>
 #include <sys/socket.h> // Para socket(), setsockopt(), SOL_SOCKET...
 #include <sys/un.h>     // Para la estructura sockaddr_un y AF_UNIX
-#include <arpa/inet.h>  // Opcional, pero ayuda con estructuras de red    // Para strcat
+#include <arpa/inet.h>
+#include <fcntl.h>  // Opcional, pero ayuda con estructuras de red    // Para strcat
 #define SOCKET_PATH "/tmp/zmetrics.sock"
 // Variables de fecha/hora
 char time_str[10];
@@ -28,7 +29,7 @@ static float sys_mem_u = 0.0f;
 static float sys_mem_t = 0.0f;
 static int sys_temp = 0;
 
-//prueba puntero a struct compartida
+// prueba puntero a struct compartida
 extern struct wl_surface *surfGlobal;
 struct shared_metrics
 {
@@ -48,16 +49,130 @@ static struct nk_color dark_green;
 struct nk_style_button estilo_original;
 struct nk_style_button miestilo; // ✅ Copia directa
 int contador = 0;
+static float bright_value = 1.0f;
+static float contrast_value = 1.0f;
+static float gamma_value = 1.0f;
 
 static float vol_value = 0.6f;
 // static float bright_value = 0.8f;
+void obtener_gamma_del_servicio(float *b, float *c, float *g) {
+    // 1. Abrimos O_WRONLY
+    int fd = open("/tmp/gamma_pipe", O_WRONLY);
+    if (fd < 0) {
+        printf("Error: No se pudo abrir el pipe para escritura\n");
+        return;
+    }
+    
+    // Escribimos la 'q'
+    write(fd, "q", 1);
+    
+    // IMPORTANTE: forzamos que los datos se escriban realmente en el pipe
+    fsync(fd); 
+    close(fd); 
+
+    // 2. Abrimos O_RDONLY para leer la respuesta
+    fd = open("/tmp/gamma_pipe", O_RDONLY);
+    if (fd < 0) return;
+
+    char buf[64];
+    memset(buf, 0, 64);
+    
+    // Leemos con un pequeño timeout o simplemente leemos
+    ssize_t n = read(fd, buf, sizeof(buf) - 1);
+    
+    if (n > 0) {
+        buf[n] = '\0';
+        printf("DEBUG: El servicio respondió: %s\n", buf);
+        sscanf(buf, "v %f %f %f", b, c, g);
+        printf("DEBUG: Valores obtenidos - Brillo: %f, Contraste: %f, Gamma: %f\n", *b, *c, *g);
+    } else {
+        printf("DEBUG: El servidor no respondió nada.\n");
+    }
+    close(fd);
+}
 int logoDraw(struct nk_command_buffer *canvas, float y, float win_width, float logo_h);
 int datedraw(struct nk_context *ctx, float y, float win_width);
 int voldraw(struct nk_context *ctx, float y, float win_width, float middle_h);
 int kernelraw(struct nk_context *ctx, float y, float win_width, float middle_h);
 int metricsDraw(struct nk_context *ctx, float y, float win_width, float footer_h);
+int gammaDraw(struct nk_context *ctx, float y, float win_width); // Declaración de gammaDraw
+
+// DECLARACIÓN QUE TE FALTA:
+void enviar_comando_gamma(char cmd, float valor);
 #include <errno.h>
 
+int gammaDraw(struct nk_context *ctx, float y, float win_width)
+{
+    obtener_gamma_del_servicio(&bright_value, &contrast_value, &gamma_value);
+    float row_h = 20.0f;
+    int offset = 30;
+    float row_height = 20.0f; // La altura que reservamos para este bloque
+    float icon_w = 30.0f;
+    float label_w = 60.0f;
+    float value_w = 40.0f;
+    float slider_w = win_width - (1 * 2 + icon_w + label_w + value_w);
+    // float paddingM = 20.0f;
+    float slider_h = 55.0f;
+    y += offset;
+    printf("gammaDraw: y inicial = %f\n", y);
+    // Usamos row_dynamic para que los elementos se posicionen solos
+    // Esto evita que los sliders se dibujen arriba del todo
+    // nk_layout_row_dynamic(ctx, row_h, 1);
+
+    // BRILLOOOOO
+    nk_layout_space_push(ctx,
+                         nk_rect(0, y, icon_w, row_height * 2));
+    nk_label(ctx, "\uf185", NK_TEXT_CENTERED);
+
+    // LABEL
+    nk_layout_space_push(ctx,
+                         nk_rect(1 + icon_w, y, label_w, row_height * 2));
+    nk_label(ctx, "BRIGHT", NK_TEXT_LEFT);
+
+    nk_layout_space_push(ctx,
+                         nk_rect(icon_w + label_w, y, slider_w - offset, row_height * 2));
+
+    // Slider Brillo
+    //nk_layout_space_push(ctx,
+    //nk_rect(1 + icon_w + label_w, y, slider_w - offset, row_height * 2));
+    // nk_label(ctx, "BRIGHT", NK_TEXT_LEFT);
+    if (nk_slider_float(ctx, 0.1f, &bright_value, 2.0f, 0.05f))
+    {
+        enviar_comando_gamma('b', bright_value);
+        //obtener_gamma_del_servicio(&bright_value, &contrast_value, &gamma_value);
+    }
+    // VALOR BRILLO
+    char buffer[16];
+    sprintf(buffer, "%d%%", (int)(bright_value * 100));
+
+    nk_layout_space_push(ctx,
+                         nk_rect(1 + icon_w + label_w + slider_w - offset, y, value_w, row_height * 2));
+    nk_label(ctx, buffer, NK_TEXT_CENTERED);
+
+    // Slider Contraste
+    nk_layout_space_push(ctx,
+                         nk_rect(0, y, slider_w, row_height * 2));
+
+    nk_label(ctx, "CONTRAST", NK_TEXT_LEFT);
+    if (nk_slider_float(ctx, 0.5f, &contrast_value, 2.0f, 0.05f))
+    {
+        enviar_comando_gamma('c', contrast_value);
+    }
+    y = y + row_h;
+    // Slider Contraste
+    nk_layout_space_push(ctx,
+                         nk_rect(0, y, slider_w, row_height * 2));
+
+    // Slider Gamma
+    nk_label(ctx, "GAMMA", NK_TEXT_LEFT);
+    if (nk_slider_float(ctx, 0.5f, &gamma_value, 2.0f, 0.05f))
+    {
+        enviar_comando_gamma('g', gamma_value);
+    }
+    //obtener_gamma_del_servicio(&bright_value, &contrast_value, &gamma_value);
+    y = y + row_h;
+    return (int)(y + (row_h * 6)); // Retornamos el nuevo espacio ocupado
+}
 // Copiamos tu función ganadora del cliente.c
 static int zui_read_full(int sock, void *buf, size_t len)
 {
@@ -164,6 +279,7 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
     estilo_original = ctx->style.button; // Guardamos el estilo original del botón
     miestilo = estilo_original;          // Inicializamos mi_estilo con el original
     // printf("winheightzUI:%f \n", win_height);
+    obtener_gamma_del_servicio(&bright_value, &contrast_value, &gamma_value);
     printf("zui_render %d\n", contador++);
     // fflush(stdout); // Esto te ayudará a ver cuándo se llama a zui_render
     static float last_sys_vol = -1.0f;
@@ -191,7 +307,6 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
     printf("Métricas en zui_render: CPU=%.1f%%, RAM=%.2f/%.2fGB, Temp=%d°C\n",
            metricasZui->cpu_usage, metricasZui->mem_used_gb, metricasZui->mem_total_gb, metricasZui->temp_c);
  */
-   
 
     float sys_vol = GetSystemVolume() / 100.0f; // siempre leer sistema
     // Dentro de tu zui_render o donde leas el volumen:
@@ -224,7 +339,7 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
         y = voldraw(ctx, y, win_width, middle_h);
         printf("Después de voldraw, y = %f\n", y);
         // printf("cpuZui %f\n", m_shared->cpu);
-
+        y = gammaDraw(ctx, y, win_width);
         int pos = metricsDraw(ctx, win_height - footer_h, win_width, footer_h);
 
         // =========================
@@ -282,7 +397,7 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
         printf("Medidas foother:%f \n", footer_h);
         printf("Medidas middleh:%f \n", middle_h);
         printf("winheightdESPUESLOGO:%f \n", win_height);
-
+        middle_h = middle_h - 20; // ajuste offset
         // Iniciamos el layout para 3 widgets
         nk_layout_space_begin(ctx, NK_STATIC, footer_h, 3);
 
@@ -311,7 +426,7 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
             nk_layout_space_push(ctx, nk_rect(padding * 2 + btn_w_third, middle_h, btn_w_third, btn_h));
             if (nk_button_label(ctx, "\uf08b"))
             {
-                //kill(-getpgrp(), SIGTERM);
+                // kill(-getpgrp(), SIGTERM);
                 exit(0);
             }
 
@@ -461,12 +576,12 @@ int kernelraw(struct nk_context *ctx, float y, float win_width, float middle_h)
 }
 int metricsDraw(struct nk_context *ctx, float y, float win_width, float footer_h)
 {
-    if (metricasZui==NULL || metricasZui->temp_c > 150) // Verificamos que metricasZui esté listo y tenga datos válidos
+    if (metricasZui == NULL || metricasZui->temp_c > 150) // Verificamos que metricasZui esté listo y tenga datos válidos
     {
-        
+
         return y;
     }
-    
+
     printf("Entrando a metricsDraw, footer_h = %f\n", y);
     float row_height = 20.0f; // La altura que reservamos para este bloque
 
@@ -476,7 +591,7 @@ int metricsDraw(struct nk_context *ctx, float y, float win_width, float footer_h
     nk_layout_space_begin(ctx, NK_STATIC, row_height, 3);
 
     // Empujamos el rect en la posición 'y' actual
-    nk_layout_space_push(ctx, nk_rect(15, y, win_width * 0.75, row_height));
+    nk_layout_space_push(ctx, nk_rect(15, y - 20, win_width * 0.75, row_height));
     /*   printf("Métricas en zui_render: CPU=%.1f%%, RAM=%.2f/%.2fGB, Temp=%d°C\n",
              metricasZui->cpu_usage, metricasZui->mem_used_gb, metricasZui->mem_total_gb, metricasZui->temp_c);
   */

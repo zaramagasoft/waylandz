@@ -98,6 +98,16 @@ pid_t pid = -1; // Variable global al principio del archivo
 //int win_width = 300;
 //int win_height = 550;
 int cur_x = 0, cur_y = 0;
+#include <stdio.h>
+
+void enviar_comando_gamma(char cmd, float valor) {
+    FILE *f = fopen("/tmp/gamma_pipe", "w");
+    if (f) {
+        fprintf(f, "%c %f\n", cmd, valor);
+        fclose(f);
+    }
+}
+
 void prueba()
 {
     char cmd[256];
