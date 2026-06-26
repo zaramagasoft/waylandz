@@ -55,18 +55,21 @@ static float gamma_value = 1.0f;
 
 static float vol_value = 0.6f;
 // static float bright_value = 0.8f;
-void obtener_gamma_del_servicio(float *b, float *c, float *g) {
+void obtener_gamma_del_servicio(float *b, float *c, float *g)
+{
     // 1. Forzamos al sistema a enviar la 'q' y cerrar el pipe
     system("echo 'q' > /tmp/gamma_pipe");
 
     // 2. Leemos la respuesta de un archivo temporal
     // Para que sea ultra sencillo, hagamos que el server escriba el resultado en un .txt
     // Es mucho más fiable que intentar leer el pipe de vuelta.
-    
+
     FILE *f = fopen("/tmp/gamma_state.txt", "r");
-    if (f) {
+    if (f)
+    {
         char buf[64];
-        if (fgets(buf, sizeof(buf), f)) {
+        if (fgets(buf, sizeof(buf), f))
+        {
             sscanf(buf, "v %f %f %f", b, c, g);
             printf("obtener_gamma_del_servicio: bright=%f, contrast=%f, gamma=%f\n", *b, *c, *g);
         }
@@ -259,6 +262,7 @@ void zui_set_style(struct nk_context *ctx)
 }
 void zui_render(struct nk_context *ctx, int win_width, int win_height)
 {
+
     estilo_original = ctx->style.button; // Guardamos el estilo original del botón
     miestilo = estilo_original;          // Inicializamos mi_estilo con el original
     // printf("winheightzUI:%f \n", win_height);
@@ -311,6 +315,10 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
     {
         struct nk_command_buffer *canvas = nk_window_get_canvas(ctx);
 
+        // tam;o nuklear
+        printf("width nuklear = %f height nuklear = %f\n",
+               nk_window_get_content_region_size(ctx).x,
+               nk_window_get_content_region_size(ctx).y);
         // --- POSICIONES ---
         float y = 0;
         y = logoDraw(canvas, y, win_width, logo_h);

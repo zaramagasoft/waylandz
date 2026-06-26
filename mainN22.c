@@ -95,14 +95,16 @@ bool frame_callback_pending = false; // Para evitar múltiples callbacks pendien
 struct shared_metrics *m_shared;     // Variable globalz
 // ojo a estudiar bien esto, es la clave para no hacer render cada vez que recibimos un configure, sino solo cuando realmente haya que redibujar
 pid_t pid = -1; // Variable global al principio del archivo
-//int win_width = 300;
-//int win_height = 550;
+// int win_width = 300;
+// int win_height = 550;
 int cur_x = 0, cur_y = 0;
 #include <stdio.h>
 
-void enviar_comando_gamma(char cmd, float valor) {
+void enviar_comando_gamma(char cmd, float valor)
+{
     FILE *f = fopen("/tmp/gamma_pipe", "w");
-    if (f) {
+    if (f)
+    {
         fprintf(f, "%c %f\n", cmd, valor);
         fclose(f);
     }
@@ -501,13 +503,13 @@ void draw_nuklear_to_cairo(struct nk_context *ctx, cairo_t *cr)
                                    CAIRO_FONT_WEIGHT_NORMAL);
 
             cairo_set_font_size(cr, t->height);
-            //printf("win_height=%d\n", win_height);
-            if (win_height>=700)
+            // printf("win_height=%d\n", win_height);
+            if (win_height >= 700)
             {
                 /* code */
                 cairo_set_font_size(cr, t->height * 1.2);
             }
-            
+
             // cairo_set_font_size(cr, t->height * 1.5);
 
             cairo_move_to(cr, t->x, t->y + t->height - 5);
@@ -577,6 +579,11 @@ static void render_frame(struct wl_surface *surface)
     needs_redraw = false; // 🔥 IMPORTANTE: Solo renderizamos cuando realmente haya que hacerlo
     cairo_surface_t *c_surf = cairo_image_surface_create_for_data(
         (unsigned char *)shm_data_global, CAIRO_FORMAT_ARGB32, win_width, win_height, win_width * 4);
+    printf("width cairo = %d\n",
+           cairo_image_surface_get_width(c_surf));
+
+    printf("height cairo = %d\n",
+           cairo_image_surface_get_height(c_surf));
     cairo_t *cr = cairo_create(c_surf);
 
     draw_nuklear_to_cairo(&ctx, cr);
@@ -758,6 +765,7 @@ int wayinit(int win_width, int win_height, int *retFlag)
     // --- CONFIGURAR SUPERFICIE & LAYER SHELL ---
     surf = wl_compositor_create_surface(compositor);
     surfGlobal = surf;
+
     int size = win_width * win_height * 4;
     int fd = memfd_create("shm", MFD_CLOEXEC);
     ftruncate(fd, size);
@@ -787,6 +795,7 @@ int wayinit(int win_width, int win_height, int *retFlag)
 }
 int refesco(struct wl_surface *surf)
 {
+
     printf("ZaramagaOS: Motor de refresco optimizado (CPU 0%%).\n");
     fflush(stdout);
 

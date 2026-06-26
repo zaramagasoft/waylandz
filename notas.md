@@ -1,3 +1,6 @@
+# MUY IMPORTANTE levantar antes ./motorgamma
+
+# falta optimizar damages y sobre todo las consultas del brillo etc, para ahorrar cpu, de momento lo ponemos en TODO
 exec_always --no-startup-id /home/alb/wl-gammactl/src/motor_gamma en sway y https://github.com/zaramagasoft/wl-gammactl/blob/4742cb9c7507247678affa4920779774e41c2b8c/README.md
 # Si se pierde, recrearlo
 sudo ln -sf /usr/lib/pkgconfig/wlroots-0.21.pc /usr/lib/pkgconfig/wlroots.pc
