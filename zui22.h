@@ -18,7 +18,7 @@ extern ZMetrics *metricasZui;
 #include <sys/socket.h> // Para socket(), setsockopt(), SOL_SOCKET...
 #include <sys/un.h>     // Para la estructura sockaddr_un y AF_UNIX
 #include <arpa/inet.h>
-#include <fcntl.h>  // Opcional, pero ayuda con estructuras de red    // Para strcat
+#include <fcntl.h> // Opcional, pero ayuda con estructuras de red    // Para strcat
 #define SOCKET_PATH "/tmp/zmetrics.sock"
 // Variables de fecha/hora
 char time_str[10];
@@ -56,39 +56,22 @@ static float gamma_value = 1.0f;
 static float vol_value = 0.6f;
 // static float bright_value = 0.8f;
 void obtener_gamma_del_servicio(float *b, float *c, float *g) {
-    // 1. Abrimos O_WRONLY
-    int fd = open("/tmp/gamma_pipe", O_WRONLY);
-    if (fd < 0) {
-        printf("Error: No se pudo abrir el pipe para escritura\n");
-        return;
-    }
-    
-    // Escribimos la 'q'
-    write(fd, "q", 1);
-    
-    // IMPORTANTE: forzamos que los datos se escriban realmente en el pipe
-    fsync(fd); 
-    close(fd); 
+    // 1. Forzamos al sistema a enviar la 'q' y cerrar el pipe
+    system("echo 'q' > /tmp/gamma_pipe");
 
-    // 2. Abrimos O_RDONLY para leer la respuesta
-    fd = open("/tmp/gamma_pipe", O_RDONLY);
-    if (fd < 0) return;
-
-    char buf[64];
-    memset(buf, 0, 64);
+    // 2. Leemos la respuesta de un archivo temporal
+    // Para que sea ultra sencillo, hagamos que el server escriba el resultado en un .txt
+    // Es mucho más fiable que intentar leer el pipe de vuelta.
     
-    // Leemos con un pequeño timeout o simplemente leemos
-    ssize_t n = read(fd, buf, sizeof(buf) - 1);
-    
-    if (n > 0) {
-        buf[n] = '\0';
-        printf("DEBUG: El servicio respondió: %s\n", buf);
-        sscanf(buf, "v %f %f %f", b, c, g);
-        printf("DEBUG: Valores obtenidos - Brillo: %f, Contraste: %f, Gamma: %f\n", *b, *c, *g);
-    } else {
-        printf("DEBUG: El servidor no respondió nada.\n");
+    FILE *f = fopen("/tmp/gamma_state.txt", "r");
+    if (f) {
+        char buf[64];
+        if (fgets(buf, sizeof(buf), f)) {
+            sscanf(buf, "v %f %f %f", b, c, g);
+            printf("obtener_gamma_del_servicio: bright=%f, contrast=%f, gamma=%f\n", *b, *c, *g);
+        }
+        fclose(f);
     }
-    close(fd);
 }
 int logoDraw(struct nk_command_buffer *canvas, float y, float win_width, float logo_h);
 int datedraw(struct nk_context *ctx, float y, float win_width);
@@ -133,13 +116,13 @@ int gammaDraw(struct nk_context *ctx, float y, float win_width)
                          nk_rect(icon_w + label_w, y, slider_w - offset, row_height * 2));
 
     // Slider Brillo
-    //nk_layout_space_push(ctx,
-    //nk_rect(1 + icon_w + label_w, y, slider_w - offset, row_height * 2));
+    // nk_layout_space_push(ctx,
+    // nk_rect(1 + icon_w + label_w, y, slider_w - offset, row_height * 2));
     // nk_label(ctx, "BRIGHT", NK_TEXT_LEFT);
     if (nk_slider_float(ctx, 0.1f, &bright_value, 2.0f, 0.05f))
     {
         enviar_comando_gamma('b', bright_value);
-        //obtener_gamma_del_servicio(&bright_value, &contrast_value, &gamma_value);
+        // obtener_gamma_del_servicio(&bright_value, &contrast_value, &gamma_value);
     }
     // VALOR BRILLO
     char buffer[16];
@@ -169,7 +152,7 @@ int gammaDraw(struct nk_context *ctx, float y, float win_width)
     {
         enviar_comando_gamma('g', gamma_value);
     }
-    //obtener_gamma_del_servicio(&bright_value, &contrast_value, &gamma_value);
+    // obtener_gamma_del_servicio(&bright_value, &contrast_value, &gamma_value);
     y = y + row_h;
     return (int)(y + (row_h * 6)); // Retornamos el nuevo espacio ocupado
 }
