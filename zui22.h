@@ -106,11 +106,12 @@ int gammaDraw(struct nk_context *ctx, float y, float win_width)
     // nk_layout_row_dynamic(ctx, row_h, 1);
 
     // BRILLOOOOO
+    // iconobrillo
     nk_layout_space_push(ctx,
                          nk_rect(0, y, icon_w, row_height * 2));
     nk_label(ctx, "\uf185", NK_TEXT_CENTERED);
 
-    // LABEL
+    // LABEL brillo
     nk_layout_space_push(ctx,
                          nk_rect(1 + icon_w, y, label_w, row_height * 2));
     nk_label(ctx, "BRIGHT", NK_TEXT_LEFT);
@@ -134,30 +135,64 @@ int gammaDraw(struct nk_context *ctx, float y, float win_width)
     nk_layout_space_push(ctx,
                          nk_rect(1 + icon_w + label_w + slider_w - offset, y, value_w, row_height * 2));
     nk_label(ctx, buffer, NK_TEXT_CENTERED);
-
-    // Slider Contraste
+    //y = y + row_h;
+    // icono contraste
+    y=y + row_h;
     nk_layout_space_push(ctx,
-                         nk_rect(0, y, slider_w, row_height * 2));
+                         nk_rect(0, y, icon_w, row_height * 2));
+    nk_label(ctx, "\uf042", NK_TEXT_CENTERED);
+    // label Contraste
+    nk_layout_space_push(ctx,
+                         nk_rect(0 + icon_w, y, slider_w, row_height * 2));
 
-    nk_label(ctx, "CONTRAST", NK_TEXT_LEFT);
-    if (nk_slider_float(ctx, 0.5f, &contrast_value, 2.0f, 0.05f))
+    nk_label(ctx, "CONTRA", NK_TEXT_LEFT);
+    // slider contraste
+    nk_layout_space_push(ctx,
+                         nk_rect(icon_w + label_w, y, slider_w - offset, row_height * 2));
+
+    if (nk_slider_float(ctx, 0.1f, &contrast_value, 2.0f, 0.05f))
     {
         enviar_comando_gamma('c', contrast_value);
     }
-    y = y + row_h;
-    // Slider Contraste
-    nk_layout_space_push(ctx,
-                         nk_rect(0, y, slider_w, row_height * 2));
+    // VALOR CONTRASTE
+    
+    char bufferC[16];
+    sprintf(bufferC, "%d%%", (int)(contrast_value * 100));
 
-    // Slider Gamma
+    nk_layout_space_push(ctx,
+                         nk_rect(1 + icon_w + label_w + slider_w - offset, y, value_w, row_height * 2));
+    nk_label(ctx, bufferC, NK_TEXT_CENTERED);
+    y = y + row_h;
+    //  gama
+    // icono gamma
+    y=y + row_h;
+    nk_layout_space_push(ctx,
+                         nk_rect(0, y, icon_w, row_height * 2));
+    nk_label(ctx, "\uf0eb", NK_TEXT_CENTERED);
+    // label gamma
+    nk_layout_space_push(ctx,
+                         nk_rect(0 + icon_w, y, slider_w, row_height * 2));
+
     nk_label(ctx, "GAMMA", NK_TEXT_LEFT);
-    if (nk_slider_float(ctx, 0.5f, &gamma_value, 2.0f, 0.05f))
+    // Slider Gamma
+    nk_layout_space_push(ctx,
+                         nk_rect(icon_w + label_w, y, slider_w - offset, row_height * 2));
+
+    if (nk_slider_float(ctx, 0.1f, &gamma_value, 2.0f, 0.05f))
     {
         enviar_comando_gamma('g', gamma_value);
     }
+    // VALOR GAMMA
+    char bufferG[16];
+    sprintf(bufferG, "%d%%", (int)(gamma_value * 100));
+
+    nk_layout_space_push(ctx,
+                         nk_rect(1 + icon_w + label_w + slider_w - offset, y, value_w, row_height * 2));
+    nk_label(ctx, bufferG, NK_TEXT_CENTERED);
+
     // obtener_gamma_del_servicio(&bright_value, &contrast_value, &gamma_value);
     y = y + row_h;
-    return (int)(y + (row_h * 6)); // Retornamos el nuevo espacio ocupado
+    return (int)(y); // Retornamos el nuevo espacio ocupado
 }
 // Copiamos tu función ganadora del cliente.c
 static int zui_read_full(int sock, void *buf, size_t len)
@@ -570,7 +605,7 @@ int metricsDraw(struct nk_context *ctx, float y, float win_width, float footer_h
     if (metricasZui == NULL || metricasZui->temp_c > 150) // Verificamos que metricasZui esté listo y tenga datos válidos
     {
 
-        return y;
+        return y + 20;
     }
 
     printf("Entrando a metricsDraw, footer_h = %f\n", y);
