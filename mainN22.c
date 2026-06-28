@@ -12,7 +12,7 @@
 #include <wayland-client.h>
 #include <cairo.h>
 #include "wlr-layer-shell-unstable-v1.h"
-#include <pthread.h>
+
 #include <unistd.h>
 #include <errno.h>
 #include <poll.h>
