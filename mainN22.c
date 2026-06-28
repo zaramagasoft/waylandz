@@ -100,7 +100,51 @@ pid_t pid = -1; // Variable global al principio del archivo
 int cur_x = 0, cur_y = 0;
 #include <stdio.h>
 int last_ping_ms = -1; // Variable global para almacenar el último ping
+static void *ping_thread(void *arg)
+{
+    PingWorker *ping = arg;
+    int last_ping_ms = -1; // Variable local para almacenar el último ping
+    while (ping->running)
+    {
+        printf("Ping...\n");
+        sleep(1);
+        FILE *fp = popen("LC_ALL=C ping -c 1 -W 1 8.8.8.8 | grep time= | cut -d '=' -f 4 | cut -d ' ' -f 1", "r");
+        if (fp) {
+            printf("Ping command executed successfully.\n");
+            char buf[16];
+            if (fgets(buf, sizeof(buf), fp)) {
+                last_ping_ms = atoi(buf);
+                printf("Último ping: %d ms\n", last_ping_ms);
+                ping->running = false;
+                //ping_stop(ping); // Aseguramos que el hilo siga corriendo
+                ping->last_ping_ms = last_ping_ms; // Guardamos el último ping en la estructura
+            }
+            pclose(fp);
+        }
+        sleep(1);
+    }
 
+    printf("Fin del hilo\n");
+
+    return NULL;
+}
+void ping_start(PingWorker *ping)
+{
+    ping->running = true;
+
+    pthread_create(
+        &ping->thread,
+        NULL,
+        ping_thread,
+        ping
+    );
+}
+void ping_stop(PingWorker *ping)
+{
+    ping->running = false;
+
+    pthread_join(ping->thread, NULL);
+}
 
 
 void enviar_comando_gamma(char cmd, float valor)
@@ -706,6 +750,9 @@ int main(int argc, char **argv)
         perror("mmap falló");
         exit(1);
     }
+    PingWorker ping;
+
+    ping_start(&ping);
     char su_buffer[256];
     //[[[[[[[[[printf("%s\n", kernelinfo(su_buffer, sizeof(su_buffer)));
     // --- 2. LANZAR EL MONITOR (FORK) ---

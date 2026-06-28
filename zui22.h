@@ -55,6 +55,15 @@ static float gamma_value = 1.0f;
 
 static float vol_value = 0.6f;
 // static float bright_value = 0.8f;
+typedef struct
+{
+    pthread_t thread;
+    bool running;
+    int last_ping_ms; // Variable para almacenar el último ping
+} PingWorker;
+static void *ping_thread(void *arg);
+void ping_start(PingWorker *ping);
+void ping_stop(PingWorker *ping);
 void obtener_gamma_del_servicio(float *b, float *c, float *g)
 {
     // 1. Forzamos al sistema a enviar la 'q' y cerrar el pipe

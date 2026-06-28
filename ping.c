@@ -22,6 +22,7 @@ static void *ping_thread(void *arg)
                 printf("Último ping: %d ms\n", last_ping_ms);
                 ping->running = false;
                 //ping_stop(ping); // Aseguramos que el hilo siga corriendo
+                ping->last_ping_ms = last_ping_ms; // Guardamos el último ping en la estructura
             }
             pclose(fp);
         }
@@ -55,13 +56,22 @@ int main(void)
 
     ping_start(&ping);
 
+
     //sleep(1);
 
     //ping_stop(&ping);
     while (ping.running)
     {
+        while (ping.last_ping_ms <= 0)
+        {
+            //printf("Último ping registrado: %d ms\n", ping.last_ping_ms);
+            sleep(1);
+            
+        }
+        
         printf("Esperando a que el ping termine...\n");
-        sleep(1);
+        printf("Último ping registrado: %d ms\n", ping.last_ping_ms);
+        //sleep(1);
     }
 
     return 0;

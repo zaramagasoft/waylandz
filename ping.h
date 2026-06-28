@@ -8,7 +8,7 @@ typedef struct
 {
     pthread_t thread;
     bool running;
-
+    int last_ping_ms; // Variable para almacenar el último ping
 } PingWorker;
 
 void ping_start(PingWorker *ping);
