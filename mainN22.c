@@ -99,6 +99,9 @@ pid_t pid = -1; // Variable global al principio del archivo
 // int win_height = 550;
 int cur_x = 0, cur_y = 0;
 #include <stdio.h>
+int last_ping_ms = -1; // Variable global para almacenar el último ping
+
+
 
 void enviar_comando_gamma(char cmd, float valor)
 {
