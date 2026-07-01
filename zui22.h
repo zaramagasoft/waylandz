@@ -406,9 +406,10 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
         // =========================
         // 🔴 FOOTER ZONE
         // =========================
+        int footeroffset = 10;
         miestilo.text_normal = nk_rgb(255, 0, 0); // Rojo para el texto del botón
         nk_fill_rect(canvas,
-                     nk_rect(0, win_height - footer_h, win_width, footer_h),
+                     nk_rect(0, win_height - footer_h - footeroffset, win_width, footer_h),
                      0,
                      // nk_rgb(40, 40, 40));
 
@@ -432,7 +433,9 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
         printf("Medidas foother:%f \n", footer_h);
         printf("Medidas middleh:%f \n", middle_h);
         printf("winheightdESPUESLOGO:%f \n", win_height);
-        middle_h = middle_h - 20; // ajuste offset
+            //aqui offset para que los botones no se solapen con el footer
+        middle_h = middle_h - 30; // ajuste offset
+        
         // Iniciamos el layout para 3 widgets
         nk_layout_space_begin(ctx, NK_STATIC, footer_h, 3);
 
@@ -613,8 +616,44 @@ int metricsDraw(struct nk_context *ctx, float y, float win_width, float footer_h
 {
     if (metricasZui == NULL || metricasZui->temp_c > 150) // Verificamos que metricasZui esté listo y tenga datos válidos
     {
+         float row_height = 20.0f; // La altura que reservamos para este bloque
 
-        return y + 20;
+    // =========================
+    // 📊 BLOQUE MÉTRICAS
+    // =========================
+    nk_layout_space_begin(ctx, NK_STATIC, row_height, 1);
+
+    // Empujamos el rect en la posición 'y' actual
+    nk_layout_space_push(ctx, nk_rect(0, y -30, win_width * 0.75, row_height));
+    /*   printf("Métricas en zui_render: CPU=%.1f%%, RAM=%.2f/%.2fGB, Temp=%d°C\n",
+             metricasZui->cpu_usage, metricasZui->mem_used_gb, metricasZui->mem_total_gb, metricasZui->temp_c);
+  */
+    /* char icoReloj[60] = " \uf017 ";
+    char icoCalendario[30] = "  \uf073 ";
+
+    strcat(icoReloj, time_str);
+    strcat(icoReloj, " / ");
+    strcat(icoCalendario, date_str);
+    strcat(icoReloj, icoCalendario);
+     */
+    // char metricasall[100];
+    // char cpu_str[20] = "", mem_str[30] = "\uefc5 ", temp_str[30] = "\uef2b ";
+    //  cpu_str="CPU: %.1f%%";
+    char metricasall[128]; // Asegúrate de que sea lo bastante grande
+
+    // Formateamos todo de una sola vez
+    snprintf(metricasall, sizeof(metricasall),
+             "\uf4bccpu:%.0f%% \uefc5ram:%.0f% \uef2b%d°C",
+             0.0f, // metricasZui->cpu_usage,
+             0.0f, // metricasZui->mem_used_gb / metricasZui->mem_total_gb * 100.0f,
+             0); // metricasZui->temp_c 
+
+    // Ahora Nuklear lo recibirá perfecto
+    nk_label(ctx, metricasall, NK_TEXT_CENTERED);
+    //nk_label(ctx, metricasall, NK_TEXT_LEFT);
+
+    nk_layout_space_end(ctx);
+        return y -30;
     }
 
     printf("Entrando a metricsDraw, footer_h = %f\n", y);
@@ -623,10 +662,10 @@ int metricsDraw(struct nk_context *ctx, float y, float win_width, float footer_h
     // =========================
     // 📊 BLOQUE MÉTRICAS
     // =========================
-    nk_layout_space_begin(ctx, NK_STATIC, row_height, 3);
+    nk_layout_space_begin(ctx, NK_STATIC, row_height, 1);
 
     // Empujamos el rect en la posición 'y' actual
-    nk_layout_space_push(ctx, nk_rect(15, y - 20, win_width * 0.75, row_height));
+    nk_layout_space_push(ctx, nk_rect(25, y -30, win_width , row_height));
     /*   printf("Métricas en zui_render: CPU=%.1f%%, RAM=%.2f/%.2fGB, Temp=%d°C\n",
              metricasZui->cpu_usage, metricasZui->mem_used_gb, metricasZui->mem_total_gb, metricasZui->temp_c);
   */
@@ -652,8 +691,9 @@ int metricsDraw(struct nk_context *ctx, float y, float win_width, float footer_h
 
     // Ahora Nuklear lo recibirá perfecto
     nk_label(ctx, metricasall, NK_TEXT_LEFT);
-    nk_label(ctx, metricasall, NK_TEXT_LEFT);
+    //nk_label(ctx, metricasall, NK_TEXT_LEFT);
 
     nk_layout_space_end(ctx);
+    return y -30;
 }
 #endif
