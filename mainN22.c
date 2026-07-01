@@ -100,9 +100,10 @@ pid_t pid = -1; // Variable global al principio del archivo
 int cur_x = 0, cur_y = 0;
 #include <stdio.h>
 int last_ping_ms = -1; // Variable global para almacenar el último ping
+PingWorker *ping=NULL; // Puntero global para el PingWorker
 static void *ping_thread(void *arg)
 {
-    PingWorker *ping = arg;
+    ping = arg;
     int last_ping_ms = -1; // Variable local para almacenar el último ping
     while (ping->running)
     {

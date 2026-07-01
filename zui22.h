@@ -61,6 +61,7 @@ typedef struct
     bool running;
     int last_ping_ms; // Variable para almacenar el último ping
 } PingWorker;
+extern PingWorker *ping; // Variable global para el PingWorker
 static void *ping_thread(void *arg);
 void ping_start(PingWorker *ping);
 void ping_stop(PingWorker *ping);
@@ -91,7 +92,7 @@ int voldraw(struct nk_context *ctx, float y, float win_width, float middle_h);
 int kernelraw(struct nk_context *ctx, float y, float win_width, float middle_h);
 int metricsDraw(struct nk_context *ctx, float y, float win_width, float footer_h);
 int gammaDraw(struct nk_context *ctx, float y, float win_width); // Declaración de gammaDraw
-
+int pingDraw(struct nk_context *ctx, float y, float win_width, PingWorker *ping);
 // DECLARACIÓN QUE TE FALTA:
 void enviar_comando_gamma(char cmd, float valor);
 #include <errno.h>
@@ -376,7 +377,11 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
         // printf("cpuZui %f\n", m_shared->cpu);
         y = gammaDraw(ctx, y, win_width);
         int pos = metricsDraw(ctx, win_height - footer_h, win_width, footer_h);
-
+        y = pos-20; // Actualizamos y con la posición devuelta por metricsDraw
+        int temping=ping->last_ping_ms;//aqui necesitamos damage ojo va pa todo
+        printf("pingZui %d\n", temping);
+        
+        y=pingDraw(ctx, y, win_width, ping);
         // =========================
         // 🔵 MIDDLE ZONE (debug opcional)
         // =========================
@@ -434,7 +439,7 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
         printf("Medidas middleh:%f \n", middle_h);
         printf("winheightdESPUESLOGO:%f \n", win_height);
             //aqui offset para que los botones no se solapen con el footer
-        middle_h = middle_h - 30; // ajuste offset
+        middle_h = middle_h - 50; // ajuste offset metricas + ping
         
         // Iniciamos el layout para 3 widgets
         nk_layout_space_begin(ctx, NK_STATIC, footer_h, 3);
@@ -692,6 +697,26 @@ int metricsDraw(struct nk_context *ctx, float y, float win_width, float footer_h
     // Ahora Nuklear lo recibirá perfecto
     nk_label(ctx, metricasall, NK_TEXT_LEFT);
     //nk_label(ctx, metricasall, NK_TEXT_LEFT);
+
+    nk_layout_space_end(ctx);
+    return y -30;
+}
+int pingDraw(struct nk_context *ctx, float y, float win_width, PingWorker *ping)
+{
+    float row_height = 20.0f; // La altura que reservamos para este bloque
+
+    // =========================
+    // 🌐 BLOQUE PING
+    // =========================
+    nk_layout_space_begin(ctx, NK_STATIC, row_height, 1);
+
+    // Empujamos el rect en la posición 'y' actual
+    nk_layout_space_push(ctx, nk_rect(25, y -30, win_width , row_height));
+
+    char ping_str[64];
+    snprintf(ping_str, sizeof(ping_str), "\uf1eb Ping: %d ms", ping->last_ping_ms);
+
+    nk_label(ctx, ping_str, NK_TEXT_LEFT);
 
     nk_layout_space_end(ctx);
     return y -30;
