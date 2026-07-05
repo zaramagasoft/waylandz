@@ -178,6 +178,7 @@ static void *ping_thread(void *arg)
 }
 void ping_start(PingWorker *ping)
 {
+    printf("Iniciando ping thread...\n");
     ping->running = true;
 
     pthread_create(

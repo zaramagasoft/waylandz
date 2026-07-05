@@ -42,10 +42,10 @@ struct shared_metrics
 // LA CLAVE: Esto dice "m_shared existe fuera de este archivo"
 extern struct shared_metrics *m_shared;
 static int show_confirm = 0; // 0: nada, 1: reboot, 2: poweroff
-// Definimos los colores aquí arriba para que todas las funciones los vean
- struct nk_color dark_bg;
- struct nk_color phosphor_green;
- struct nk_color dark_green;
+                             // Definimos los colores aquí arriba para que todas las funciones los vean
+struct nk_color dark_bg;
+struct nk_color phosphor_green;
+struct nk_color dark_green;
 struct nk_style_button estilo_original;
 struct nk_style_button miestilo; // ✅ Copia directa
 int contador = 0;
@@ -721,25 +721,49 @@ int pingDraw(struct nk_context *ctx, float y, float win_width, PingWorker *ping)
     struct nk_color color_original = ctx->style.text.color;
     // 1. Guardamos el estilo de fondo actual (es un nk_style_item)
     struct nk_style_item old_bg = ctx->style.window.fixed_background;
-    
+
     // 2. SET: Aplicar el nuevo color
     ctx->style.text.color = nk_rgb(255, 255, 255);
     // ctx->style.window.tooltip_border_color = nk_rgb(255, 0, 0); // Cambiamos el color del borde del popup
     // ctx->style.window.fixed_background.type = NK_STYLE_ITEM_COLOR;
-   
+
     // ... aquí dibujas tu tooltip ...
     // nk_tooltip(ctx, "ping google.com");
-
+    struct nk_rect boundsping = nk_widget_bounds(ctx);
+    if (nk_input_mouse_clicked(&ctx->input, NK_BUTTON_LEFT, boundsping))
+    {
+         ping->running = !ping->running;
+        ping_start(ping);
+       // ping->running = !ping->running; // Toggle the running state
+        //pingDraw(ctx, y, win_width, ping);
+        /* for (int i = 0; i < 115; i++)
+        y = pingDraw(ctx, y, win_width, ping);
+            printf("¡Has hecho clic en el label del ping! Iteración %d\n", i + 1);
+            //usleep(100000); // Espera de 100 ms entre iteraciones
+         */
+        //printf("¡Has hecho clic en el label del ping!\n");
+    }
     // 3. RESTORE: Volver al color original usando la variable que guardaste
     if (nk_input_is_mouse_hovering_rect(&ctx->input, nk_widget_bounds(ctx)))
     {
+        printf("Mouse is hovering over the ping label\n");
+        // ctx->style.text.color = nk_rgb(255, 0, 0); // Cambiamos el color del texto a amarillo
         ctx->style.window.background = nk_rgba(10, 15, 10, 230); // Cambiamos el color del texto a amarillo
         nk_tooltip(ctx, "ping google.com");
+        ctx->style.text.color = nk_rgb(255, 0, 0); // Cambiamos el color del texto a amarillo
+        nk_label(ctx, ping_str, NK_TEXT_LEFT);
     }
+    else
+    {
+        printf("Mouse is NOT hovering over the ping label\n");
+        ctx->style.text.color = color_original; // Restauramos el color original
+        nk_label(ctx, ping_str, NK_TEXT_LEFT);
+    }
+
     ctx->style.text.color = color_original;
     ctx->style.window.fixed_background = old_bg;
 
-    nk_label(ctx, ping_str, NK_TEXT_LEFT);
+    // nk_label(ctx, ping_str, NK_TEXT_LEFT);
 
     nk_layout_space_end(ctx);
     return y - 30;
