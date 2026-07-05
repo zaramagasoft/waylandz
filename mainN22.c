@@ -99,8 +99,53 @@ pid_t pid = -1; // Variable global al principio del archivo
 // int win_height = 550;
 int cur_x = 0, cur_y = 0;
 #include <stdio.h>
-int last_ping_ms = -1; // Variable global para almacenar el último ping
-PingWorker *ping=NULL; // Puntero global para el PingWorker
+int last_ping_ms = -1;   // Variable global para almacenar el último ping
+PingWorker *ping = NULL; // Puntero global para el PingWorker
+const char* get_command_name(int type) {
+    switch(type) {
+        case NK_COMMAND_SCISSOR: return "NK_COMMAND_SCISSOR";
+        case NK_COMMAND_RECT: return "NK_COMMAND_RECT";
+        case NK_COMMAND_RECT_FILLED: return "NK_COMMAND_RECT_FILLED";
+        case NK_COMMAND_TEXT: return "NK_COMMAND_TEXT";
+        case NK_COMMAND_IMAGE: return "NK_COMMAND_IMAGE";
+        case NK_COMMAND_CUSTOM: return "NK_COMMAND_CUSTOM";
+        case NK_COMMAND_NOP: return "NK_COMMAND_NOP";
+        case NK_COMMAND_LINE: return "NK_COMMAND_LINE";
+        case NK_COMMAND_CURVE: return "NK_COMMAND_CURVE";
+        case NK_COMMAND_RECT_MULTI_COLOR: return "NK_COMMAND_RECT_MULTI_COLOR";
+        case NK_COMMAND_CIRCLE: return "NK_COMMAND_CIRCLE";
+        case NK_COMMAND_CIRCLE_FILLED: return "NK_COMMAND_CIRCLE_FILLED";
+        case NK_COMMAND_ARC: return "NK_COMMAND_ARC";
+        case NK_COMMAND_ARC_FILLED: return "NK_COMMAND_ARC_FILLED";
+        case NK_COMMAND_TRIANGLE: return "NK_COMMAND_TRIANGLE";
+        case NK_COMMAND_TRIANGLE_FILLED: return "NK_COMMAND_TRIANGLE_FILLED";
+        case NK_COMMAND_POLYGON: return "NK_COMMAND_POLYGON";
+        case NK_COMMAND_POLYGON_FILLED: return "NK_COMMAND_POLYGON_FILLED";
+        case NK_COMMAND_POLYLINE: return "NK_COMMAND_POLYLINE";
+
+     /*    NK_COMMAND_NOP,
+    NK_COMMAND_SCISSOR,
+    NK_COMMAND_LINE,
+    NK_COMMAND_CURVE,
+    NK_COMMAND_RECT,
+    NK_COMMAND_RECT_FILLED,
+    NK_COMMAND_RECT_MULTI_COLOR,
+    NK_COMMAND_CIRCLE,
+    NK_COMMAND_CIRCLE_FILLED,
+    NK_COMMAND_ARC,
+    NK_COMMAND_ARC_FILLED,
+    NK_COMMAND_TRIANGLE,
+    NK_COMMAND_TRIANGLE_FILLED,
+    NK_COMMAND_POLYGON,
+    NK_COMMAND_POLYGON_FILLED,
+    NK_COMMAND_POLYLINE,
+    NK_COMMAND_TEXT,
+    NK_COMMAND_IMAGE,
+    NK_COMMAND_CUSTOM */
+        // ... añade los que necesites
+        default: return "DESCONOCIDO";
+    }
+}
 static void *ping_thread(void *arg)
 {
     ping = arg;
@@ -110,14 +155,16 @@ static void *ping_thread(void *arg)
         printf("Ping...\n");
         sleep(1);
         FILE *fp = popen("LC_ALL=C ping -c 1 -W 1 8.8.8.8 | grep time= | cut -d '=' -f 4 | cut -d ' ' -f 1", "r");
-        if (fp) {
+        if (fp)
+        {
             printf("Ping command executed successfully.\n");
             char buf[16];
-            if (fgets(buf, sizeof(buf), fp)) {
+            if (fgets(buf, sizeof(buf), fp))
+            {
                 last_ping_ms = atoi(buf);
                 printf("Último ping: %d ms\n", last_ping_ms);
                 ping->running = false;
-                //ping_stop(ping); // Aseguramos que el hilo siga corriendo
+                // ping_stop(ping); // Aseguramos que el hilo siga corriendo
                 ping->last_ping_ms = last_ping_ms; // Guardamos el último ping en la estructura
             }
             pclose(fp);
@@ -137,8 +184,7 @@ void ping_start(PingWorker *ping)
         &ping->thread,
         NULL,
         ping_thread,
-        ping
-    );
+        ping);
 }
 void ping_stop(PingWorker *ping)
 {
@@ -146,7 +192,6 @@ void ping_stop(PingWorker *ping)
 
     pthread_join(ping->thread, NULL);
 }
-
 
 void enviar_comando_gamma(char cmd, float valor)
 {
@@ -512,6 +557,8 @@ void draw_nuklear_to_cairo(struct nk_context *ctx, cairo_t *cr)
 
     nk_foreach(cmd, ctx)
     {
+        //printf("Procesando Comando Tipo: %d\n", cmd->type);
+        //printf("Procesando: %s\n", get_command_name(cmd->type));
         switch (cmd->type)
         {
         case NK_COMMAND_RECT_FILLED:
@@ -520,6 +567,7 @@ void draw_nuklear_to_cairo(struct nk_context *ctx, cairo_t *cr)
             cairo_set_source_rgba(cr, r->color.r / 255.0, r->color.g / 255.0, r->color.b / 255.0, r->color.a / 255.0);
             cairo_rectangle(cr, r->x, r->y, r->w, r->h);
             cairo_fill(cr);
+            // printf("Dibujando rect: R:%d G:%d B:%d A:%d\n", r->color.r, r->color.g, r->color.b, r->color.a);
         }
         break;
         case NK_COMMAND_RECT:
@@ -567,6 +615,7 @@ void draw_nuklear_to_cairo(struct nk_context *ctx, cairo_t *cr)
         case NK_COMMAND_SCISSOR:
         {
             const struct nk_command_scissor *s = (const struct nk_command_scissor *)cmd;
+            
             cairo_reset_clip(cr);
             cairo_rectangle(cr, s->x, s->y, s->w, s->h);
             cairo_clip(cr);
@@ -591,6 +640,16 @@ void draw_nuklear_to_cairo(struct nk_context *ctx, cairo_t *cr)
             cairo_fill(cr);
         }
         break;
+        case NK_COMMAND_CUSTOM:
+        {
+            // Opcional: si ves que hay imágenes, ignóralas por ahora.
+            // Si el texto sigue sin salir, es porque el comando 15 no está llegando
+            // o el scissor (comando 1) está mal posicionado.
+            printf("Comando CUSTOM ignorado por Cairo: %d\n", cmd->type);
+        } break;
+        default:
+            printf("Comando  NUKLEAR por cairo ignorado: %d\n", cmd->type);
+            break;
         }
     }
     // draw_logo_shm(cr, 90, 10);

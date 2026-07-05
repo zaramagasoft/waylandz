@@ -43,9 +43,9 @@ struct shared_metrics
 extern struct shared_metrics *m_shared;
 static int show_confirm = 0; // 0: nada, 1: reboot, 2: poweroff
 // Definimos los colores aquí arriba para que todas las funciones los vean
-static struct nk_color dark_bg;
-static struct nk_color phosphor_green;
-static struct nk_color dark_green;
+ struct nk_color dark_bg;
+ struct nk_color phosphor_green;
+ struct nk_color dark_green;
 struct nk_style_button estilo_original;
 struct nk_style_button miestilo; // ✅ Copia directa
 int contador = 0;
@@ -145,9 +145,9 @@ int gammaDraw(struct nk_context *ctx, float y, float win_width)
     nk_layout_space_push(ctx,
                          nk_rect(1 + icon_w + label_w + slider_w - offset, y, value_w, row_height * 2));
     nk_label(ctx, buffer, NK_TEXT_CENTERED);
-    //y = y + row_h;
-    // icono contraste
-    y=y + row_h;
+    // y = y + row_h;
+    //  icono contraste
+    y = y + row_h;
     nk_layout_space_push(ctx,
                          nk_rect(0, y, icon_w, row_height * 2));
     nk_label(ctx, "\uf042", NK_TEXT_CENTERED);
@@ -165,7 +165,7 @@ int gammaDraw(struct nk_context *ctx, float y, float win_width)
         enviar_comando_gamma('c', contrast_value);
     }
     // VALOR CONTRASTE
-    
+
     char bufferC[16];
     sprintf(bufferC, "%d%%", (int)(contrast_value * 100));
 
@@ -175,7 +175,7 @@ int gammaDraw(struct nk_context *ctx, float y, float win_width)
     y = y + row_h;
     //  gama
     // icono gamma
-    y=y + row_h;
+    y = y + row_h;
     nk_layout_space_push(ctx,
                          nk_rect(0, y, icon_w, row_height * 2));
     nk_label(ctx, "\uf0eb", NK_TEXT_CENTERED);
@@ -377,11 +377,11 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
         // printf("cpuZui %f\n", m_shared->cpu);
         y = gammaDraw(ctx, y, win_width);
         int pos = metricsDraw(ctx, win_height - footer_h, win_width, footer_h);
-        y = pos-20; // Actualizamos y con la posición devuelta por metricsDraw
-        int temping=ping->last_ping_ms;//aqui necesitamos damage ojo va pa todo
+        y = pos - 20;                     // Actualizamos y con la posición devuelta por metricsDraw
+        int temping = ping->last_ping_ms; // aqui necesitamos damage ojo va pa todo
         printf("pingZui %d\n", temping);
-        
-        y=pingDraw(ctx, y, win_width, ping);
+
+        y = pingDraw(ctx, y, win_width, ping);
         // =========================
         // 🔵 MIDDLE ZONE (debug opcional)
         // =========================
@@ -438,9 +438,9 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
         printf("Medidas foother:%f \n", footer_h);
         printf("Medidas middleh:%f \n", middle_h);
         printf("winheightdESPUESLOGO:%f \n", win_height);
-            //aqui offset para que los botones no se solapen con el footer
+        // aqui offset para que los botones no se solapen con el footer
         middle_h = middle_h - 50; // ajuste offset metricas + ping
-        
+
         // Iniciamos el layout para 3 widgets
         nk_layout_space_begin(ctx, NK_STATIC, footer_h, 3);
 
@@ -621,44 +621,44 @@ int metricsDraw(struct nk_context *ctx, float y, float win_width, float footer_h
 {
     if (metricasZui == NULL || metricasZui->temp_c > 150) // Verificamos que metricasZui esté listo y tenga datos válidos
     {
-         float row_height = 20.0f; // La altura que reservamos para este bloque
+        float row_height = 20.0f; // La altura que reservamos para este bloque
 
-    // =========================
-    // 📊 BLOQUE MÉTRICAS
-    // =========================
-    nk_layout_space_begin(ctx, NK_STATIC, row_height, 1);
+        // =========================
+        // 📊 BLOQUE MÉTRICAS
+        // =========================
+        nk_layout_space_begin(ctx, NK_STATIC, row_height, 1);
 
-    // Empujamos el rect en la posición 'y' actual
-    nk_layout_space_push(ctx, nk_rect(0, y -30, win_width * 0.75, row_height));
-    /*   printf("Métricas en zui_render: CPU=%.1f%%, RAM=%.2f/%.2fGB, Temp=%d°C\n",
-             metricasZui->cpu_usage, metricasZui->mem_used_gb, metricasZui->mem_total_gb, metricasZui->temp_c);
-  */
-    /* char icoReloj[60] = " \uf017 ";
-    char icoCalendario[30] = "  \uf073 ";
+        // Empujamos el rect en la posición 'y' actual
+        nk_layout_space_push(ctx, nk_rect(0, y - 30, win_width * 0.75, row_height));
+        /*   printf("Métricas en zui_render: CPU=%.1f%%, RAM=%.2f/%.2fGB, Temp=%d°C\n",
+                 metricasZui->cpu_usage, metricasZui->mem_used_gb, metricasZui->mem_total_gb, metricasZui->temp_c);
+      */
+        /* char icoReloj[60] = " \uf017 ";
+        char icoCalendario[30] = "  \uf073 ";
 
-    strcat(icoReloj, time_str);
-    strcat(icoReloj, " / ");
-    strcat(icoCalendario, date_str);
-    strcat(icoReloj, icoCalendario);
-     */
-    // char metricasall[100];
-    // char cpu_str[20] = "", mem_str[30] = "\uefc5 ", temp_str[30] = "\uef2b ";
-    //  cpu_str="CPU: %.1f%%";
-    char metricasall[128]; // Asegúrate de que sea lo bastante grande
+        strcat(icoReloj, time_str);
+        strcat(icoReloj, " / ");
+        strcat(icoCalendario, date_str);
+        strcat(icoReloj, icoCalendario);
+         */
+        // char metricasall[100];
+        // char cpu_str[20] = "", mem_str[30] = "\uefc5 ", temp_str[30] = "\uef2b ";
+        //  cpu_str="CPU: %.1f%%";
+        char metricasall[128]; // Asegúrate de que sea lo bastante grande
 
-    // Formateamos todo de una sola vez
-    snprintf(metricasall, sizeof(metricasall),
-             "\uf4bccpu:%.0f%% \uefc5ram:%.0f% \uef2b%d°C",
-             0.0f, // metricasZui->cpu_usage,
-             0.0f, // metricasZui->mem_used_gb / metricasZui->mem_total_gb * 100.0f,
-             0); // metricasZui->temp_c 
+        // Formateamos todo de una sola vez
+        snprintf(metricasall, sizeof(metricasall),
+                 "\uf4bccpu:%.0f%% \uefc5ram:%.0f% \uef2b%d°C",
+                 0.0f, // metricasZui->cpu_usage,
+                 0.0f, // metricasZui->mem_used_gb / metricasZui->mem_total_gb * 100.0f,
+                 0);   // metricasZui->temp_c
 
-    // Ahora Nuklear lo recibirá perfecto
-    nk_label(ctx, metricasall, NK_TEXT_CENTERED);
-    //nk_label(ctx, metricasall, NK_TEXT_LEFT);
+        // Ahora Nuklear lo recibirá perfecto
+        nk_label(ctx, metricasall, NK_TEXT_CENTERED);
+        // nk_label(ctx, metricasall, NK_TEXT_LEFT);
 
-    nk_layout_space_end(ctx);
-        return y -30;
+        nk_layout_space_end(ctx);
+        return y - 30;
     }
 
     printf("Entrando a metricsDraw, footer_h = %f\n", y);
@@ -670,7 +670,7 @@ int metricsDraw(struct nk_context *ctx, float y, float win_width, float footer_h
     nk_layout_space_begin(ctx, NK_STATIC, row_height, 1);
 
     // Empujamos el rect en la posición 'y' actual
-    nk_layout_space_push(ctx, nk_rect(25, y -30, win_width , row_height));
+    nk_layout_space_push(ctx, nk_rect(25, y - 30, win_width, row_height));
     /*   printf("Métricas en zui_render: CPU=%.1f%%, RAM=%.2f/%.2fGB, Temp=%d°C\n",
              metricasZui->cpu_usage, metricasZui->mem_used_gb, metricasZui->mem_total_gb, metricasZui->temp_c);
   */
@@ -696,10 +696,10 @@ int metricsDraw(struct nk_context *ctx, float y, float win_width, float footer_h
 
     // Ahora Nuklear lo recibirá perfecto
     nk_label(ctx, metricasall, NK_TEXT_LEFT);
-    //nk_label(ctx, metricasall, NK_TEXT_LEFT);
+    // nk_label(ctx, metricasall, NK_TEXT_LEFT);
 
     nk_layout_space_end(ctx);
-    return y -30;
+    return y - 30;
 }
 int pingDraw(struct nk_context *ctx, float y, float win_width, PingWorker *ping)
 {
@@ -711,14 +711,37 @@ int pingDraw(struct nk_context *ctx, float y, float win_width, PingWorker *ping)
     nk_layout_space_begin(ctx, NK_STATIC, row_height, 1);
 
     // Empujamos el rect en la posición 'y' actual
-    nk_layout_space_push(ctx, nk_rect(25, y -30, win_width , row_height));
+    nk_layout_space_push(ctx, nk_rect(25, y - 30, win_width / 2, row_height));
 
     char ping_str[64];
-    snprintf(ping_str, sizeof(ping_str), "\uf1eb Ping: %d ms", ping->last_ping_ms);
+    snprintf(ping_str, sizeof(ping_str), "\uf0ac Ping: %d ms", ping->last_ping_ms);
+    // puebas de tooltips and colors
+    // ctx->style.text.color = nk_rgb(255, 0, 0); // Verde fosforito para el ping
+    //  1. GET: Guardar el color actual en una variable temporal
+    struct nk_color color_original = ctx->style.text.color;
+    // 1. Guardamos el estilo de fondo actual (es un nk_style_item)
+    struct nk_style_item old_bg = ctx->style.window.fixed_background;
+    
+    // 2. SET: Aplicar el nuevo color
+    ctx->style.text.color = nk_rgb(255, 255, 255);
+    // ctx->style.window.tooltip_border_color = nk_rgb(255, 0, 0); // Cambiamos el color del borde del popup
+    // ctx->style.window.fixed_background.type = NK_STYLE_ITEM_COLOR;
+   
+    // ... aquí dibujas tu tooltip ...
+    // nk_tooltip(ctx, "ping google.com");
+
+    // 3. RESTORE: Volver al color original usando la variable que guardaste
+    if (nk_input_is_mouse_hovering_rect(&ctx->input, nk_widget_bounds(ctx)))
+    {
+        ctx->style.window.background = nk_rgba(10, 15, 10, 230); // Cambiamos el color del texto a amarillo
+        nk_tooltip(ctx, "ping google.com");
+    }
+    ctx->style.text.color = color_original;
+    ctx->style.window.fixed_background = old_bg;
 
     nk_label(ctx, ping_str, NK_TEXT_LEFT);
 
     nk_layout_space_end(ctx);
-    return y -30;
+    return y - 30;
 }
 #endif
