@@ -732,9 +732,9 @@ int pingDraw(struct nk_context *ctx, float y, float win_width, PingWorker *ping)
     struct nk_rect boundsping = nk_widget_bounds(ctx);
     if (nk_input_mouse_clicked(&ctx->input, NK_BUTTON_LEFT, boundsping))
     {
-         ping->running = !ping->running;
+        // ping->running = !ping->running;
         ping_start(ping);
-       // ping->running = !ping->running; // Toggle the running state
+        //ping->running = !ping->running; // Toggle the running state
         //pingDraw(ctx, y, win_width, ping);
         /* for (int i = 0; i < 115; i++)
         y = pingDraw(ctx, y, win_width, ping);
