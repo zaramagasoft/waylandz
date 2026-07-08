@@ -62,6 +62,13 @@ typedef struct
     int last_ping_ms; // Variable para almacenar el último ping
 } PingWorker;
 extern PingWorker *ping; // Variable global para el PingWorker
+static inline uint64_t now_ns(void)
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+
+    return (uint64_t)ts.tv_sec * 1000000000ULL + ts.tv_nsec;
+}
 static void *ping_thread(void *arg);
 void ping_start(PingWorker *ping);
 void ping_stop(PingWorker *ping);
@@ -81,7 +88,7 @@ void obtener_gamma_del_servicio(float *b, float *c, float *g)
         if (fgets(buf, sizeof(buf), f))
         {
             sscanf(buf, "v %f %f %f", b, c, g);
-            printf("obtener_gamma_del_servicio: bright=%f, contrast=%f, gamma=%f\n", *b, *c, *g);
+            //printf("obtener_gamma_del_servicio: bright=%f, contrast=%f, gamma=%f\n", *b, *c, *g);
         }
         fclose(f);
     }
@@ -110,7 +117,7 @@ int gammaDraw(struct nk_context *ctx, float y, float win_width)
     // float paddingM = 20.0f;
     float slider_h = 55.0f;
     y += offset;
-    printf("gammaDraw: y inicial = %f\n", y);
+    //printf("gammaDraw: y inicial = %f\n", y);
     // Usamos row_dynamic para que los elementos se posicionen solos
     // Esto evita que los sliders se dibujen arriba del todo
     // nk_layout_row_dynamic(ctx, row_h, 1);
@@ -312,7 +319,7 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
     miestilo = estilo_original;          // Inicializamos mi_estilo con el original
     // printf("winheightzUI:%f \n", win_height);
     obtener_gamma_del_servicio(&bright_value, &contrast_value, &gamma_value);
-    printf("zui_render %d\n", contador++);
+    //printf("zui_render %d\n", contador++);
     // fflush(stdout); // Esto te ayudará a ver cuándo se llama a zui_render
     static float last_sys_vol = -1.0f;
     // --- LÓGICA DE TIEMPO ---
@@ -353,7 +360,8 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
 
     float middle_h = win_height - logo_h - footer_h;
     vol_value = GetSystemVolume() / 100.0f; // Actualiza el volumen cada frame
-
+    uint64_t t;
+        t = now_ns();
     if (nk_begin(ctx, "ZaramagaDock",
                  nk_rect(0, 0, (float)win_width, (float)win_height),
                  NK_WINDOW_NO_SCROLLBAR))
@@ -361,25 +369,28 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
         struct nk_command_buffer *canvas = nk_window_get_canvas(ctx);
 
         // tam;o nuklear
-        printf("width nuklear = %f height nuklear = %f\n",
+       /*  printf("width nuklear = %f height nuklear = %f\n",
                nk_window_get_content_region_size(ctx).x,
-               nk_window_get_content_region_size(ctx).y);
+               nk_window_get_content_region_size(ctx).y); */
         // --- POSICIONES ---
+        
         float y = 0;
         y = logoDraw(canvas, y, win_width, logo_h);
-        printf("Después de logoDraw, y = %f\n", y);
+        //printf("logo      %6lu us\n", (now_ns() - t) / 1000);
+        
+        //printf("Después de logoDraw, y = %f\n", y);
         y = kernelraw(ctx, y, win_width, middle_h);
-        printf("Después de kernelraw, y = %f\n", y);
+        //printf("Después de kernelraw, y = %f\n", y);
         y = datedraw(ctx, y, win_width);
-        printf("Después de datedraw, y = %f\n", y);
+        //printf("Después de datedraw, y = %f\n", y);
         y = voldraw(ctx, y, win_width, middle_h);
-        printf("Después de voldraw, y = %f\n", y);
+        //printf("Después de voldraw, y = %f\n", y);
         // printf("cpuZui %f\n", m_shared->cpu);
         y = gammaDraw(ctx, y, win_width);
         int pos = metricsDraw(ctx, win_height - footer_h, win_width, footer_h);
         y = pos - 20;                     // Actualizamos y con la posición devuelta por metricsDraw
         int temping = ping->last_ping_ms; // aqui necesitamos damage ojo va pa todo
-        printf("pingZui %d\n", temping);
+        //printf("pingZui %d\n", temping);
 
         y = pingDraw(ctx, y, win_width, ping);
         // =========================
@@ -434,10 +445,10 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
         // Centrado vertical en el footer (una sola fila)
         float y_btn = win_height - footer_h + (footer_h - btn_h) / 2;
         // middle_h= win_height - footer_h;
-        printf("Medidas middleh:%f \n", middle_h);
-        printf("Medidas foother:%f \n", footer_h);
-        printf("Medidas middleh:%f \n", middle_h);
-        printf("winheightdESPUESLOGO:%f \n", win_height);
+        //printf("Medidas middleh:%f \n", middle_h);
+        //printf("Medidas foother:%f \n", footer_h);
+        //printf("Medidas middleh:%f \n", middle_h);
+        //printf("winheightdESPUESLOGO:%f \n", win_height);
         // aqui offset para que los botones no se solapen con el footer
         middle_h = middle_h - 50; // ajuste offset metricas + ping
 
@@ -508,9 +519,11 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
         }
 
         nk_layout_space_end(ctx);
+        
     }
 
     nk_end(ctx);
+    printf("todo layout %lu ns\n", now_ns() - t);
 }
 int logoDraw(struct nk_command_buffer *canvas, float y, float win_width, float logo_h)
 {
@@ -661,7 +674,7 @@ int metricsDraw(struct nk_context *ctx, float y, float win_width, float footer_h
         return y - 30;
     }
 
-    printf("Entrando a metricsDraw, footer_h = %f\n", y);
+    //printf("Entrando a metricsDraw, footer_h = %f\n", y);
     float row_height = 20.0f; // La altura que reservamos para este bloque
 
     // =========================
@@ -746,7 +759,7 @@ int pingDraw(struct nk_context *ctx, float y, float win_width, PingWorker *ping)
     // 3. RESTORE: Volver al color original usando la variable que guardaste
     if (nk_input_is_mouse_hovering_rect(&ctx->input, nk_widget_bounds(ctx)))
     {
-        printf("Mouse is hovering over the ping label\n");
+        //printf("Mouse is hovering over the ping label\n");
         // ctx->style.text.color = nk_rgb(255, 0, 0); // Cambiamos el color del texto a amarillo
         ctx->style.window.background = nk_rgba(10, 15, 10, 230); // Cambiamos el color del texto a amarillo
         nk_tooltip(ctx, "ping google.com");
@@ -755,7 +768,7 @@ int pingDraw(struct nk_context *ctx, float y, float win_width, PingWorker *ping)
     }
     else
     {
-        printf("Mouse is NOT hovering over the ping label\n");
+        //printf("Mouse is NOT hovering over the ping label\n");
         ctx->style.text.color = color_original; // Restauramos el color original
         nk_label(ctx, ping_str, NK_TEXT_LEFT);
     }
