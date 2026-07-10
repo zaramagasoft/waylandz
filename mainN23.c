@@ -132,7 +132,8 @@ static void load_logo_surface(void)
     if (!pixels)
         return;
 
-    // De momento aquí paramos.
+    // De momento no hacemos nada más.
+    stbi_image_free(pixels);
 }
 const char *get_command_name(int type)
 {

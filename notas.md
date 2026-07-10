@@ -1,3 +1,5 @@
+gcc mainN23.c wlr-layer-shell-unstable-v1.c xdg-shell.c -o zmenun224     $(pkg-config --cflags --libs wayland-client cairo)     -lm -Ofast -lpthread
+
 # MUY IMPORTANTE levantar antes ./motorgamma
 
 # falta optimizar damages y sobre todo las consultas del brillo etc, para ahorrar cpu, de momento lo ponemos en TODO
