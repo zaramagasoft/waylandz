@@ -121,6 +121,17 @@ static unsigned char *logo_pixels = NULL;
 
 static int logo_w = 0;
 static int logo_h = 0;
+// ===============================
+// DAMAGE FLAGS
+// ===============================
+#define DAMAGE_LOGO      (1 << 0)
+#define DAMAGE_KERNEL    (1 << 1)
+#define DAMAGE_DATE      (1 << 2)
+#define DAMAGE_VOLUME    (1 << 3)
+#define DAMAGE_PING      (1 << 4)
+#define DAMAGE_METRICS   (1 << 5)
+
+static uint32_t damage_flags = 0;
 
 static void load_logo_surface(void)
 {
