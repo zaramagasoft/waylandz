@@ -117,11 +117,16 @@ typedef struct
 
 PerfStats perf;
 static cairo_surface_t *logo_surface = NULL;
+static unsigned char *logo_pixels = NULL;
+
+static int logo_w = 0;
+static int logo_h = 0;
+
 static void load_logo_surface(void)
 {
     int w, h, channels;
 
-    unsigned char *pixels = stbi_load_from_memory(
+    logo_pixels = stbi_load_from_memory(
         zaramagaos_png,
         zaramagaos_png_len,
         &w,
@@ -129,11 +134,45 @@ static void load_logo_surface(void)
         &channels,
         4);
 
-    if (!pixels)
+    if (!logo_pixels)
         return;
 
-    // De momento no hacemos nada más.
-    stbi_image_free(pixels);
+    // Guardamos el tamaño original
+    logo_w = w;
+    logo_h = h;
+
+    // RGBA -> BGRA premultiplicado (lo hacemos UNA SOLA VEZ)
+    for (int i = 0; i < logo_w * logo_h * 4; i += 4)
+    {
+        unsigned char r = logo_pixels[i];
+        unsigned char g = logo_pixels[i + 1];
+        unsigned char b = logo_pixels[i + 2];
+        unsigned char a = logo_pixels[i + 3];
+
+        logo_pixels[i] = (b * a) / 255;
+        logo_pixels[i + 1] = (g * a) / 255;
+        logo_pixels[i + 2] = (r * a) / 255;
+        logo_pixels[i + 3] = a;
+    }
+
+    int stride = cairo_format_stride_for_width(
+        CAIRO_FORMAT_ARGB32,
+        logo_w);
+
+    logo_surface = cairo_image_surface_create_for_data(
+        logo_pixels,
+        CAIRO_FORMAT_ARGB32,
+        logo_w,
+        logo_h,
+        stride);
+
+    if (cairo_surface_status(logo_surface) != CAIRO_STATUS_SUCCESS)
+    {
+        stbi_image_free(logo_pixels);
+        logo_pixels = NULL;
+        logo_surface = NULL;
+        return;
+    }
 }
 const char *get_command_name(int type)
 {
@@ -300,6 +339,11 @@ void prueba() // llamamos atxit
         kill(pid_audio, SIGTERM);
         waitpid(pid_audio, NULL, 0);
     }
+    if (logo_surface)
+        cairo_surface_destroy(logo_surface);
+
+    if (logo_pixels)
+        stbi_image_free(logo_pixels);
 }
 static void on_frame_done(void *data, struct wl_callback *cb, uint32_t time)
 {
@@ -542,7 +586,12 @@ void start_zui_monitor()
         {
             if (strstr(linea, "sink") && strstr(linea, "change"))
             {
+                printf("Evento de volumen\n");
+                fflush(stdout);
+                m_shared->volume = GetSystemVolume();
                 // El "Codazo" al padre
+                printf("Nuevo volumen = %d\n", m_shared->volume);
+                fflush(stdout);
                 kill(getppid(), SIGUSR1);
 
                 // Pequeña pausa para no ametrallar al padre si mueves el slider rápido
@@ -558,36 +607,11 @@ void draw_logo_shm(cairo_t *cr,
                    int x, int y,
                    int max_w, int max_h)
 {
-    int w, h, channels;
-    unsigned char *pixels = stbi_load_from_memory(
-        zaramagaos_png, zaramagaos_png_len,
-        &w, &h, &channels, 4);
-
-    if (!pixels)
+    if (!logo_surface)
         return;
 
-    // --- RGBA → BGRA premultiplicado ---
-    for (int i = 0; i < w * h * 4; i += 4)
-    {
-        unsigned char r = pixels[i];
-        unsigned char g = pixels[i + 1];
-        unsigned char b = pixels[i + 2];
-        unsigned char a = pixels[i + 3];
-
-        pixels[i] = (b * a) / 255;
-        pixels[i + 1] = (g * a) / 255;
-        pixels[i + 2] = (r * a) / 255;
-        pixels[i + 3] = a;
-    }
-
-    int stride = cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, w);
-    cairo_surface_t *surf =
-        cairo_image_surface_create_for_data(
-            pixels, CAIRO_FORMAT_ARGB32, w, h, stride);
-
-    // 🔥 escala proporcional (clave)
-    float scale_x = (float)max_w / (float)w;
-    float scale_y = (float)max_h / (float)h;
+    float scale_x = (float)max_w / (float)logo_w;
+    float scale_y = (float)max_h / (float)logo_h;
     float scale = (scale_x < scale_y) ? scale_x : scale_y;
 
     cairo_save(cr);
@@ -595,14 +619,11 @@ void draw_logo_shm(cairo_t *cr,
     cairo_translate(cr, x, y);
     cairo_scale(cr, scale, scale);
 
-    cairo_set_source_surface(cr, surf, 0, 0);
+    cairo_set_source_surface(cr, logo_surface, 0, 0);
     cairo_pattern_set_filter(cairo_get_source(cr), CAIRO_FILTER_GOOD);
     cairo_paint(cr);
 
     cairo_restore(cr);
-
-    cairo_surface_destroy(surf);
-    stbi_image_free(pixels);
 }
 
 // --- TRADUCTOR NUKLEAR A CAIRO ---
@@ -613,6 +634,10 @@ void draw_nuklear_to_cairo(struct nk_context *ctx, cairo_t *cr)
     cairo_set_source_rgba(cr, 0, 0, 0, 0);
     cairo_paint(cr);
     cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
+    cairo_select_font_face(cr,
+                       "3270 Nerd Font Propo",
+                       CAIRO_FONT_SLANT_NORMAL,
+                       CAIRO_FONT_WEIGHT_NORMAL);
 
     nk_foreach(cmd, ctx)
     {
@@ -639,38 +664,26 @@ void draw_nuklear_to_cairo(struct nk_context *ctx, cairo_t *cr)
         }
         break;
         case NK_COMMAND_TEXT:
-        { /*
-             const struct nk_command_text *t = (const struct nk_command_text *)cmd;
-             cairo_set_source_rgba(cr, t->foreground.r / 255.0, t->foreground.g / 255.0, t->foreground.b / 255.0, t->foreground.a / 255.0);
-             cairo_move_to(cr, t->x, t->y + t->height - 5);
-             cairo_show_text(cr, (const char *)t->string); */
-            const struct nk_command_text *t = (const struct nk_command_text *)cmd;
+{
+    const struct nk_command_text *t = (const struct nk_command_text *)cmd;
 
-            cairo_set_source_rgba(cr,
-                                  t->foreground.r / 255.0,
-                                  t->foreground.g / 255.0,
-                                  t->foreground.b / 255.0,
-                                  t->foreground.a / 255.0);
+    cairo_set_source_rgba(cr,
+                          t->foreground.r / 255.0,
+                          t->foreground.g / 255.0,
+                          t->foreground.b / 255.0,
+                          t->foreground.a / 255.0);
 
-            // 👇 AQUÍ eliges la fuente
-            cairo_select_font_face(cr, "3270 Nerd Font Propo",
-                                   CAIRO_FONT_SLANT_NORMAL,
-                                   CAIRO_FONT_WEIGHT_NORMAL);
+    float font_size = t->height;
 
-            cairo_set_font_size(cr, t->height);
-            // printf("win_height=%d\n", win_height);
-            if (win_height >= 700)
-            {
-                /* code */
-                cairo_set_font_size(cr, t->height * 1.2);
-            }
+    if (win_height >= 700)
+        font_size *= 1.2f;
 
-            // cairo_set_font_size(cr, t->height * 1.5);
+    cairo_set_font_size(cr, font_size);
 
-            cairo_move_to(cr, t->x, t->y + t->height - 5);
-            cairo_show_text(cr, (const char *)t->string);
-        }
-        break;
+    cairo_move_to(cr, t->x, t->y + t->height - 5);
+    cairo_show_text(cr, (const char *)t->string);
+}
+break;
         case NK_COMMAND_SCISSOR:
         {
             const struct nk_command_scissor *s = (const struct nk_command_scissor *)cmd;
@@ -901,6 +914,7 @@ int main(int argc, char **argv)
         perror("mmap falló");
         exit(1);
     }
+    m_shared->volume = GetSystemVolume();
 
     PingWorker ping;
 
