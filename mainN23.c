@@ -121,15 +121,16 @@ static unsigned char *logo_pixels = NULL;
 
 static int logo_w = 0;
 static int logo_h = 0;
+static bool mouse_changed_ui = false;
 // ===============================
 // DAMAGE FLAGS
 // ===============================
-#define DAMAGE_LOGO      (1 << 0)
-#define DAMAGE_KERNEL    (1 << 1)
-#define DAMAGE_DATE      (1 << 2)
-#define DAMAGE_VOLUME    (1 << 3)
-#define DAMAGE_PING      (1 << 4)
-#define DAMAGE_METRICS   (1 << 5)
+#define DAMAGE_LOGO (1 << 0)
+#define DAMAGE_KERNEL (1 << 1)
+#define DAMAGE_DATE (1 << 2)
+#define DAMAGE_VOLUME (1 << 3)
+#define DAMAGE_PING (1 << 4)
+#define DAMAGE_METRICS (1 << 5)
 
 static uint32_t damage_flags = 0;
 
@@ -646,9 +647,9 @@ void draw_nuklear_to_cairo(struct nk_context *ctx, cairo_t *cr)
     cairo_paint(cr);
     cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
     cairo_select_font_face(cr,
-                       "3270 Nerd Font Propo",
-                       CAIRO_FONT_SLANT_NORMAL,
-                       CAIRO_FONT_WEIGHT_NORMAL);
+                           "3270 Nerd Font Propo",
+                           CAIRO_FONT_SLANT_NORMAL,
+                           CAIRO_FONT_WEIGHT_NORMAL);
 
     nk_foreach(cmd, ctx)
     {
@@ -675,26 +676,26 @@ void draw_nuklear_to_cairo(struct nk_context *ctx, cairo_t *cr)
         }
         break;
         case NK_COMMAND_TEXT:
-{
-    const struct nk_command_text *t = (const struct nk_command_text *)cmd;
+        {
+            const struct nk_command_text *t = (const struct nk_command_text *)cmd;
 
-    cairo_set_source_rgba(cr,
-                          t->foreground.r / 255.0,
-                          t->foreground.g / 255.0,
-                          t->foreground.b / 255.0,
-                          t->foreground.a / 255.0);
+            cairo_set_source_rgba(cr,
+                                  t->foreground.r / 255.0,
+                                  t->foreground.g / 255.0,
+                                  t->foreground.b / 255.0,
+                                  t->foreground.a / 255.0);
 
-    float font_size = t->height;
+            float font_size = t->height;
 
-    if (win_height >= 700)
-        font_size *= 1.2f;
+            if (win_height >= 700)
+                font_size *= 1.2f;
 
-    cairo_set_font_size(cr, font_size);
+            cairo_set_font_size(cr, font_size);
 
-    cairo_move_to(cr, t->x, t->y + t->height - 5);
-    cairo_show_text(cr, (const char *)t->string);
-}
-break;
+            cairo_move_to(cr, t->x, t->y + t->height - 5);
+            cairo_show_text(cr, (const char *)t->string);
+        }
+        break;
         case NK_COMMAND_SCISSOR:
         {
             const struct nk_command_scissor *s = (const struct nk_command_scissor *)cmd;
@@ -803,7 +804,15 @@ static void render_frame(struct wl_surface *surface)
     clock_gettime(CLOCK_MONOTONIC, &t0);
 
     wl_surface_attach(surface, buffer, 0, 0);
-    wl_surface_damage(surface, 0, 0, win_width, win_height);
+    // wl_surface_damage(surface, 0, 0, win_width, win_height);
+    int logo_height = win_height * 0.15f;
+
+    wl_surface_damage(
+        surface,
+        0,
+        logo_height,
+        win_width,
+        win_height - logo_height);
     wl_surface_commit(surface);
 
     clock_gettime(CLOCK_MONOTONIC, &t1);
@@ -833,6 +842,7 @@ static float text_get_width(nk_handle handle, float height, const char *text, in
 
 static void pointer_motion(void *data, struct wl_pointer *ptr, uint32_t time, wl_fixed_t x, wl_fixed_t y)
 {
+    
     cur_x = wl_fixed_to_int(x);
     cur_y = wl_fixed_to_int(y);
 

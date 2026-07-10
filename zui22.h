@@ -349,12 +349,12 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
  */
     vol_value = m_shared->volume / 100.0f;
 
-    printf("Nuevo volumen zuirender = %d\n", m_shared->volume);
-    fflush(stdout);
+    //printf("Nuevo volumen zuirender = %d\n", m_shared->volume);
+    //fflush(stdout);
     // float sys_vol = GetSystemVolume() / 100.0f; // siempre leer sistema
     //  Dentro de tu zui_render o donde leas el volumen:
-    static uint32_t frame_count = 0;
-    frame_count++;
+    //static uint32_t frame_count = 0;
+    //frame_count++;
 
     float v = vol_value;
     // --- ZONAS ---
@@ -528,19 +528,24 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
     nk_end(ctx);
     printf("todo layout %lu ns\n", now_ns() - t);
 }
-int logoDraw(struct nk_command_buffer *canvas, float y, float win_width, float logo_h)
+int logoDraw(struct nk_command_buffer *canvas,
+             float y,
+             float win_width,
+             float logo_h)
 {
-    // =========================
-    // 🟢 LOGO ZONE (debug opcional)
-    // =========================
-    nk_fill_rect(canvas,
-                 nk_rect(0, y, win_width, logo_h),
-                 0,
-                 // nk_rgb(0, 255, 0));
-                 nk_rgba(40, 40, 40, 20)); // 👈 ALPHA
+    static bool first = true;
 
-    y += logo_h;
-    return y;
+    if (first)
+    {
+        nk_fill_rect(canvas,
+                     nk_rect(0, y, win_width, logo_h),
+                     0,
+                     nk_rgba(40, 40, 40, 20));
+
+        first = false;
+    }
+
+    return y + logo_h;
 }
 int datedraw(struct nk_context *ctx, float y, float win_width)
 {
