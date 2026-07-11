@@ -1,5 +1,7 @@
 todo> Damages wayland y refrescos raton
-
+mejoras de rendimiento hechas, faltan ... 
+# MUY IMPORTANTE los hovers solo esta hecho bien el de pingdraw
+gcc mainN23.c wlr-layer-shell-unstable-v1.c xdg-shell.c -o zmenun223     $(pkg-config --cflags --libs wayland-client cairo)     -lm -O0 -lpthread
 gcc mainN23.c wlr-layer-shell-unstable-v1.c xdg-shell.c -o zmenun224     $(pkg-config --cflags --libs wayland-client cairo)     -lm -Ofast -lpthread
 
 # MUY IMPORTANTE levantar antes ./motorgamma

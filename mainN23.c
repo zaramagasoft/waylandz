@@ -70,7 +70,7 @@ static int frame_count = 0;
 uint32_t *shm_data_global;
 static int retFlag = 0;
 static bool needs_redraw = false;
-char *mi_buffer[256];
+char *mi_buffer[1];
 pid_t pid_metrics = -1;
 pid_t pid_audio = -1;
 pthread_t hilo;
@@ -862,14 +862,19 @@ static void pointer_motion(void *data, struct wl_pointer *ptr, uint32_t time, wl
     {
         needs_redraw = false; // No hay interacción, no redibujamos
     } */
-    if (nk_input_is_mouse_hovering_rect(&ctx.input, g_hover.ping)||nk_input_is_mouse_hovering_rect(&ctx.input, g_hover.volume)||nk_input_is_mouse_hovering_rect(&ctx.input, g_hover.bright)||nk_input_is_mouse_hovering_rect(&ctx.input, g_hover.contrast)||nk_input_is_mouse_hovering_rect(&ctx.input, g_hover.gamma))
+    if (nk_input_is_mouse_hovering_rect(&ctx.input, g_hover.ping) || nk_input_is_mouse_hovering_rect(&ctx.input, g_hover.volume) || nk_input_is_mouse_hovering_rect(&ctx.input, g_hover.bright) || nk_input_is_mouse_hovering_rect(&ctx.input, g_hover.contrast) || nk_input_is_mouse_hovering_rect(&ctx.input, g_hover.gamma) || nk_input_is_mouse_hovering_rect(&ctx.input, g_hover.reboot) || nk_input_is_mouse_hovering_rect(&ctx.input, g_hover.exit) || nk_input_is_mouse_hovering_rect(&ctx.input, g_hover.power))
     {
         needs_redraw = true;
-        printf("PING HOVER\n");
+        // printf("PING HOVER\n");
     }
     else
     {
         needs_redraw = false;
+    }
+    if (g_hover.is_hovering_ping)
+    {
+        //printf("PING HOVER \n");
+        needs_redraw = true;
     }
 }
 static void noop() {}

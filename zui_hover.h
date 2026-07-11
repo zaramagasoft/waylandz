@@ -13,6 +13,7 @@ typedef struct
     struct nk_rect reboot;
     struct nk_rect exit;
     struct nk_rect power;
+    bool is_hovering_ping;
 } ZuiHoverRects;
 
 extern ZuiHoverRects g_hover;
