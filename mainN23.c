@@ -121,7 +121,10 @@ static unsigned char *logo_pixels = NULL;
 
 static int logo_w = 0;
 static int logo_h = 0;
-static bool mouse_changed_ui = false;
+// static bool mouse_changed_ui = false;
+#include "zui_hover.h"
+
+ZuiHoverRects g_hover;
 // ===============================
 // DAMAGE FLAGS
 // ===============================
@@ -842,7 +845,7 @@ static float text_get_width(nk_handle handle, float height, const char *text, in
 
 static void pointer_motion(void *data, struct wl_pointer *ptr, uint32_t time, wl_fixed_t x, wl_fixed_t y)
 {
-    
+
     cur_x = wl_fixed_to_int(x);
     cur_y = wl_fixed_to_int(y);
 
@@ -851,13 +854,22 @@ static void pointer_motion(void *data, struct wl_pointer *ptr, uint32_t time, wl
 
     // 2. Comprobamos si el ratón está sobre algo que Nuklear reconozca
     // Esto evita que redibujes cuando el ratón está en el "espacio vacío"
-    if (nk_window_is_any_hovered(&ctx))
+    /* if (nk_window_is_any_hovered(&ctx))
     {
         needs_redraw = true;
     }
     else
     {
         needs_redraw = false; // No hay interacción, no redibujamos
+    } */
+    if (nk_input_is_mouse_hovering_rect(&ctx.input, g_hover.ping)||nk_input_is_mouse_hovering_rect(&ctx.input, g_hover.volume)||nk_input_is_mouse_hovering_rect(&ctx.input, g_hover.bright)||nk_input_is_mouse_hovering_rect(&ctx.input, g_hover.contrast)||nk_input_is_mouse_hovering_rect(&ctx.input, g_hover.gamma))
+    {
+        needs_redraw = true;
+        printf("PING HOVER\n");
+    }
+    else
+    {
+        needs_redraw = false;
     }
 }
 static void noop() {}

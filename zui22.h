@@ -20,6 +20,7 @@ extern ZMetrics *metricasZui;
 #include <arpa/inet.h>
 #include <fcntl.h> // Opcional, pero ayuda con estructuras de red    // Para strcat
 #define SOCKET_PATH "/tmp/zmetrics.sock"
+#include "zui_hover.h"
 // Variables de fecha/hora
 char time_str[10];
 char date_str[20];
@@ -141,6 +142,8 @@ int gammaDraw(struct nk_context *ctx, float y, float win_width)
     // nk_layout_space_push(ctx,
     // nk_rect(1 + icon_w + label_w, y, slider_w - offset, row_height * 2));
     // nk_label(ctx, "BRIGHT", NK_TEXT_LEFT);
+    struct nk_rect bounds = nk_widget_bounds(ctx);
+    g_hover.bright = bounds;
     if (nk_slider_float(ctx, 0.1f, &bright_value, 2.0f, 0.05f))
     {
         enviar_comando_gamma('b', bright_value);
@@ -167,7 +170,8 @@ int gammaDraw(struct nk_context *ctx, float y, float win_width)
     // slider contraste
     nk_layout_space_push(ctx,
                          nk_rect(icon_w + label_w, y, slider_w - offset, row_height * 2));
-
+    bounds = nk_widget_bounds(ctx);
+    g_hover.contrast = bounds;
     if (nk_slider_float(ctx, 0.1f, &contrast_value, 2.0f, 0.05f))
     {
         enviar_comando_gamma('c', contrast_value);
@@ -195,7 +199,8 @@ int gammaDraw(struct nk_context *ctx, float y, float win_width)
     // Slider Gamma
     nk_layout_space_push(ctx,
                          nk_rect(icon_w + label_w, y, slider_w - offset, row_height * 2));
-
+    bounds = nk_widget_bounds(ctx);
+    g_hover.gamma = bounds;
     if (nk_slider_float(ctx, 0.1f, &gamma_value, 2.0f, 0.05f))
     {
         enviar_comando_gamma('g', gamma_value);
@@ -349,12 +354,12 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
  */
     vol_value = m_shared->volume / 100.0f;
 
-    //printf("Nuevo volumen zuirender = %d\n", m_shared->volume);
-    //fflush(stdout);
-    // float sys_vol = GetSystemVolume() / 100.0f; // siempre leer sistema
-    //  Dentro de tu zui_render o donde leas el volumen:
-    //static uint32_t frame_count = 0;
-    //frame_count++;
+    // printf("Nuevo volumen zuirender = %d\n", m_shared->volume);
+    // fflush(stdout);
+    //  float sys_vol = GetSystemVolume() / 100.0f; // siempre leer sistema
+    //   Dentro de tu zui_render o donde leas el volumen:
+    // static uint32_t frame_count = 0;
+    // frame_count++;
 
     float v = vol_value;
     // --- ZONAS ---
@@ -593,6 +598,7 @@ int voldraw(struct nk_context *ctx, float y, float win_width, float middle_h)
     // ICONO
     nk_layout_space_push(ctx,
                          nk_rect(0, y, icon_w, row_height * 2));
+
     nk_label(ctx, "\uF028", NK_TEXT_CENTERED);
 
     // LABEL
@@ -601,8 +607,9 @@ int voldraw(struct nk_context *ctx, float y, float win_width, float middle_h)
     nk_label(ctx, "VOLUME", NK_TEXT_CENTERED);
 
     // SLIDER
-    nk_layout_space_push(ctx,
-                         nk_rect(1 + icon_w + label_w, y, slider_w - offset, row_height * 2));
+    nk_layout_space_push(ctx, nk_rect(1 + icon_w + label_w, y, slider_w - offset, row_height * 2));
+    struct nk_rect boundsvol = nk_widget_bounds(ctx);
+    g_hover.volume = boundsvol;
     if (nk_slider_float(ctx, 0.0f, &vol_value, 2.0f, 0.01f))
     {
         zui_set_volume(vol_value);
@@ -731,8 +738,14 @@ int pingDraw(struct nk_context *ctx, float y, float win_width, PingWorker *ping)
     // =========================
     nk_layout_space_begin(ctx, NK_STATIC, row_height, 1);
 
+    struct nk_rect ping_rect = nk_rect(25, y - 30, win_width / 2, row_height);
+
+    // g_hover.ping = ping_rect;
+
+    nk_layout_space_push(ctx, ping_rect);
+
     // Empujamos el rect en la posición 'y' actual
-    nk_layout_space_push(ctx, nk_rect(25, y - 30, win_width / 2, row_height));
+    // nk_layout_space_push(ctx, nk_rect(25, y - 30, win_width / 2, row_height));
 
     char ping_str[64];
     snprintf(ping_str, sizeof(ping_str), "\uf0ac Ping: %d ms", ping->last_ping_ms);
@@ -751,6 +764,7 @@ int pingDraw(struct nk_context *ctx, float y, float win_width, PingWorker *ping)
     // ... aquí dibujas tu tooltip ...
     // nk_tooltip(ctx, "ping google.com");
     struct nk_rect boundsping = nk_widget_bounds(ctx);
+    g_hover.ping = boundsping; // Guardamos las coordenadas del rectángulo del ping en la estructura global
     if (nk_input_mouse_clicked(&ctx->input, NK_BUTTON_LEFT, boundsping))
     {
         // ping->running = !ping->running;
