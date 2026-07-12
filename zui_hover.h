@@ -17,7 +17,8 @@ typedef struct
     bool is_hovering_volume;
     bool is_hovering_bright;
     bool is_hovering_contrast;
-    bool is_hovering_gamma; 
+    bool is_hovering_gamma;
+    bool r_rendered; 
 } ZuiHoverRects;
 
 extern ZuiHoverRects g_hover;

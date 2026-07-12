@@ -518,6 +518,8 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
             if (nk_button_label(ctx, "\uf08b"))
             {
                 // kill(-getpgrp(), SIGTERM);
+                //system("swaymsg exit");
+                system("swaymsg -q exit >/dev/null 2>&1");
                 exit(0);
             }
 

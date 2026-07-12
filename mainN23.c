@@ -442,6 +442,7 @@ void *hilo_funcion(void *arg)
         metricasZui = &m; // Asignamos el puntero a la estructura ZMetrics
         close(sock);
         usleep(200000);
+        g_hover.r_rendered = true; // Marcamos que necesitamos redibujar
     }
 
     close(sock);
@@ -870,30 +871,31 @@ static void pointer_motion(void *data, struct wl_pointer *ptr, uint32_t time, wl
     else
     {
         needs_redraw = false;
+        //g_hover.r_rendered = true; // Marcamos que no hay hover, para que el próximo frame se dibuje de nuevo
     }
     if (g_hover.is_hovering_ping)
     {
-        //printf("PING HOVER \n");
+        // printf("PING HOVER \n");
         needs_redraw = true;
     }
     if (g_hover.is_hovering_volume)
     {
-        //printf("VOLUME HOVER \n");
+        // printf("VOLUME HOVER \n");
         needs_redraw = true;
     }
     if (g_hover.is_hovering_bright)
     {
-        //printf("BRIGHT HOVER \n");
+        // printf("BRIGHT HOVER \n");
         needs_redraw = true;
     }
     if (g_hover.is_hovering_contrast)
     {
-        //printf("CONTRAST HOVER \n");
+        // printf("CONTRAST HOVER \n");
         needs_redraw = true;
     }
     if (g_hover.is_hovering_gamma)
     {
-        //printf("GAMMA HOVER \n");
+        // printf("GAMMA HOVER \n");
         needs_redraw = true;
     }
 }
@@ -975,7 +977,7 @@ int main(int argc, char **argv)
     m_shared->volume = GetSystemVolume();
 
     PingWorker ping;
-    
+
     ping_start(&ping);
     char su_buffer[256];
     //[[[[[[[[[printf("%s\n", kernelinfo(su_buffer, sizeof(su_buffer)));
@@ -1081,11 +1083,12 @@ int wayinit(int win_width, int win_height, int *retFlag)
 int refesco(struct wl_surface *surf)
 {
 
-    // //printf("ZaramagaOS: Motor de refresco optimizado (CPU 0%%).\n");
-    //fflush(stdout);
-
+    // printf("ZaramagaOS: Motor de refresco optimizado (CPU 0%%).\n");
+    // fflush(stdout);
+    // printf("ZaramagaOS: grenderes, %d).\n",g_hover.r_rendered);
     while (1)
     {
+        // printf("refesco: needs_redraw=%d, g_hover.r_rendered=%d\n", needs_redraw, g_hover.r_rendered);
         while (wl_display_prepare_read(display) != 0)
         {
             wl_display_dispatch_pending(display);
@@ -1093,6 +1096,7 @@ int refesco(struct wl_surface *surf)
         wl_display_flush(display);
 
         struct pollfd pfd = {.fd = wl_display_get_fd(display), .events = POLLIN};
+        //struct pollfd pfd2 = {.fd = wl_display_get_fd(display), .events = POLLIN};
 
         // --- CAMBIO AQUÍ: Cálculo del Timeout para el Reloj ---
         struct timespec now;
@@ -1112,7 +1116,7 @@ int refesco(struct wl_surface *surf)
 
         // 4. Lanzamos el poll con el tiempo justo
         int ret = poll(&pfd, 1, timeout_final);
-
+        
         if (ret == 0)
         {
             // ¡TIMEOUT! Ha pasado un minuto.
@@ -1143,9 +1147,18 @@ int refesco(struct wl_surface *surf)
         wl_display_dispatch_pending(display);
         if (configured && needs_redraw)
         {
+            //printf("refesco: needs_redraw=%d, g_hover.r_rendered=%d\n", needs_redraw, g_hover.r_rendered);
+
             render_frame(surf);
             needs_redraw = false;
         }
+        if (configured && g_hover.r_rendered && !needs_redraw)
+        {
+            //printf("refesco: needs_redraw=%d, g_hover.r_rendered=%d\n", needs_redraw, g_hover.r_rendered);
+            render_frame(surf);
+            g_hover.r_rendered = false;
+        }
+
     }
     return 0;
 }
