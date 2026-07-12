@@ -876,6 +876,26 @@ static void pointer_motion(void *data, struct wl_pointer *ptr, uint32_t time, wl
         //printf("PING HOVER \n");
         needs_redraw = true;
     }
+    if (g_hover.is_hovering_volume)
+    {
+        //printf("VOLUME HOVER \n");
+        needs_redraw = true;
+    }
+    if (g_hover.is_hovering_bright)
+    {
+        //printf("BRIGHT HOVER \n");
+        needs_redraw = true;
+    }
+    if (g_hover.is_hovering_contrast)
+    {
+        //printf("CONTRAST HOVER \n");
+        needs_redraw = true;
+    }
+    if (g_hover.is_hovering_gamma)
+    {
+        //printf("GAMMA HOVER \n");
+        needs_redraw = true;
+    }
 }
 static void noop() {}
 
@@ -955,7 +975,7 @@ int main(int argc, char **argv)
     m_shared->volume = GetSystemVolume();
 
     PingWorker ping;
-
+    
     ping_start(&ping);
     char su_buffer[256];
     //[[[[[[[[[printf("%s\n", kernelinfo(su_buffer, sizeof(su_buffer)));
@@ -1062,7 +1082,7 @@ int refesco(struct wl_surface *surf)
 {
 
     // //printf("ZaramagaOS: Motor de refresco optimizado (CPU 0%%).\n");
-    fflush(stdout);
+    //fflush(stdout);
 
     while (1)
     {

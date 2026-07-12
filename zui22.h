@@ -77,13 +77,13 @@ void ping_stop(PingWorker *ping);
 void obtener_gamma_del_servicio(float *b, float *c, float *g)
 {
     // 1. Forzamos al sistema a enviar la 'q' y cerrar el pipe
-    // system("echo 'q' > /tmp/gamma_pipe");
-    static int fd = -1;
+    system("echo 'q' > /tmp/gamma_pipe");
+    /*   static int fd = -1;
 
-    if (fd == -1)
-        fd = open("/tmp/gamma_pipe", O_WRONLY);
+      if (fd == -1)
+          fd = open("/tmp/gamma_pipe", O_WRONLY);
 
-    write(fd, "q", 1);
+      write(fd, "q", 1); */
     // 2. Leemos la respuesta de un archivo temporal
     // Para que sea ultra sencillo, hagamos que el server escriba el resultado en un .txt
     // Es mucho más fiable que intentar leer el pipe de vuelta.
@@ -292,6 +292,8 @@ void zui_init_colors()
 
 void zui_set_style(struct nk_context *ctx)
 {
+    obtener_gamma_del_servicio(&bright_value, &contrast_value, &gamma_value);
+
     zui_init_colors();
 
     ctx->style.slider.bar_height = 30.0f;
@@ -332,7 +334,7 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
     estilo_original = ctx->style.button; // Guardamos el estilo original del botón
     miestilo = estilo_original;          // Inicializamos mi_estilo con el original
     // printf("winheightzUI:%f \n", win_height);
-    obtener_gamma_del_servicio(&bright_value, &contrast_value, &gamma_value);
+    // obtener_gamma_del_servicio(&bright_value, &contrast_value, &gamma_value);
     // printf("zui_render %d\n", contador++);
     //  fflush(stdout); // Esto te ayudará a ver cuándo se llama a zui_render
     static float last_sys_vol = -1.0f;
@@ -638,6 +640,23 @@ int voldraw(struct nk_context *ctx, float y, float win_width, float middle_h)
     nk_layout_space_push(ctx, nk_rect(1 + icon_w + label_w, y, slider_w - offset, row_height * 2));
     struct nk_rect boundsvol = nk_widget_bounds(ctx);
     g_hover.volume = boundsvol;
+    if (nk_input_is_mouse_hovering_rect(&ctx->input, nk_widget_bounds(ctx)))
+    {
+        // printf("Mouse is hovering over the ping label\n");
+        //  ctx->style.text.color = nk_rgb(255, 0, 0); // Cambiamos el color del texto a amarillo
+        ctx->style.window.background = nk_rgba(10, 15, 10, 230); // Cambiamos el color del texto a amarillo
+
+        g_hover.is_hovering_volume = true; // Guardamos las coordenadas del rectángulo del ping en la estructura global
+
+        // ctx->style.text.color = nk_rgb(255, 0, 0); // Cambiamos el color del texto a amarillo
+    }
+    else
+    {
+        // printf("Mouse is NOT hovering over the ping label\n");
+        // ctx->style.text.color = color_original; // Restauramos el color original
+        g_hover.is_hovering_volume = false;
+        // nk_label(ctx, ping_str, NK_TEXT_LEFT);
+    }
     if (nk_slider_float(ctx, 0.0f, &vol_value, 2.0f, 0.01f))
     {
         zui_set_volume(vol_value);

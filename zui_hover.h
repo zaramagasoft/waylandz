@@ -14,6 +14,10 @@ typedef struct
     struct nk_rect exit;
     struct nk_rect power;
     bool is_hovering_ping;
+    bool is_hovering_volume;
+    bool is_hovering_bright;
+    bool is_hovering_contrast;
+    bool is_hovering_gamma; 
 } ZuiHoverRects;
 
 extern ZuiHoverRects g_hover;
