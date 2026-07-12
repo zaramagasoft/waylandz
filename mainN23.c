@@ -66,6 +66,7 @@ struct wl_cursor *default_cursor;
 struct wl_surface *cursor_surface;
 
 bool configured = false;
+
 static int frame_count = 0;
 uint32_t *shm_data_global;
 static int retFlag = 0;
@@ -136,6 +137,16 @@ ZuiHoverRects g_hover;
 #define DAMAGE_METRICS (1 << 5)
 
 static uint32_t damage_flags = 0;
+bool logo_dirty = true;
+static void zui_cairo_font(cairo_t *cr);
+static void zui_cairo_font(cairo_t *cr)
+{
+    cairo_select_font_face(
+        cr,
+        "3270 Nerd Font Propo",
+        CAIRO_FONT_SLANT_NORMAL,
+        CAIRO_FONT_WEIGHT_NORMAL);
+}
 
 static void load_logo_surface(void)
 {
@@ -316,6 +327,8 @@ void enviar_comando_gamma(char cmd, float valor)
 
 void prueba() // llamamos atxit
 {
+    nk_free(&ctx);
+    // nk_font_atlas_clear(&atlas);
     cairo_destroy(cr);
     cairo_surface_destroy(c_surf);
     char cmd[256];
@@ -641,19 +654,29 @@ void draw_logo_shm(cairo_t *cr,
 
     cairo_restore(cr);
 }
-
+static inline uint64_t diff_ns(struct timespec a, struct timespec b)
+{
+    return (b.tv_sec - a.tv_sec) * 1000000000ULL +
+           (b.tv_nsec - a.tv_nsec);
+}
 // --- TRADUCTOR NUKLEAR A CAIRO ---
 void draw_nuklear_to_cairo(struct nk_context *ctx, cairo_t *cr)
 {
+    uint64_t text_time = 0;
+    int text_calls = 0;
+    struct timespec t0, t1;
+    clock_gettime(CLOCK_MONOTONIC, &t0);
+
+    text_calls++;
     const struct nk_command *cmd;
     cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
     cairo_set_source_rgba(cr, 0, 0, 0, 0);
     cairo_paint(cr);
     cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
-    cairo_select_font_face(cr,
+    /* cairo_select_font_face(cr,
                            "3270 Nerd Font Propo",
                            CAIRO_FONT_SLANT_NORMAL,
-                           CAIRO_FONT_WEIGHT_NORMAL);
+                           CAIRO_FONT_WEIGHT_NORMAL); */
 
     nk_foreach(cmd, ctx)
     {
@@ -681,6 +704,7 @@ void draw_nuklear_to_cairo(struct nk_context *ctx, cairo_t *cr)
         break;
         case NK_COMMAND_TEXT:
         {
+
             const struct nk_command_text *t = (const struct nk_command_text *)cmd;
 
             cairo_set_source_rgba(cr,
@@ -741,21 +765,33 @@ void draw_nuklear_to_cairo(struct nk_context *ctx, cairo_t *cr)
             break;
         }
     }
+    clock_gettime(CLOCK_MONOTONIC, &t0);
     // draw_logo_shm(cr, 90, 10);
     int logo_height = win_height * 0.15f; // 15% arriba
+    if (logo_dirty)
+    {
+        draw_logo_shm(
+            cr,
+            (win_width / 2 + (logo_height / 3)) - (logo_height), // Centrado horizontalmente
+            0,
+            win_width,
+            logo_height);
+        logo_dirty = false;
+    }
+    /* draw_logo_shm(
+       cr,
+       (win_width / 2 + (logo_height / 3)) - (logo_height), // Centrado horizontalmente
+       0,
+       win_width,
+       logo_height);  */
 
-    draw_logo_shm(
-        cr,
-        (win_width / 2 + (logo_height / 3)) - (logo_height), // Centrado horizontalmente
-        0,
-        win_width,
-        logo_height);
+    clock_gettime(CLOCK_MONOTONIC, &t1);
+    text_time += diff_ns(t0, t1);
+    printf("LOGO CAIRO: %d llamadas, %lu ns\n",
+           text_calls,
+           text_time);
 }
-static inline uint64_t diff_ns(struct timespec a, struct timespec b)
-{
-    return (b.tv_sec - a.tv_sec) * 1000000000ULL +
-           (b.tv_nsec - a.tv_nsec);
-}
+
 // --- RENDERIZADO ---
 static void render_frame(struct wl_surface *surface)
 {
@@ -811,13 +847,16 @@ static void render_frame(struct wl_surface *surface)
     // wl_surface_damage(surface, 0, 0, win_width, win_height);
     int logo_height = win_height * 0.15f;
 
-    wl_surface_damage(
-        surface,
-        0,
-        logo_height,
-        win_width,
-        win_height - logo_height);
-    wl_surface_commit(surface);
+    wl_surface_damage(surface,
+                      0, logo_height,
+                      win_width, win_height);
+    /*   wl_surface_damage(
+          surface,
+          0,
+          logo_height,
+          win_width,
+          win_height - logo_height); */
+    // wl_surface_commit(surface);
 
     clock_gettime(CLOCK_MONOTONIC, &t1);
     perf.commit_ns = diff_ns(t0, t1);
@@ -871,7 +910,7 @@ static void pointer_motion(void *data, struct wl_pointer *ptr, uint32_t time, wl
     else
     {
         needs_redraw = false;
-        //g_hover.r_rendered = true; // Marcamos que no hay hover, para que el próximo frame se dibuje de nuevo
+        // g_hover.r_rendered = true; // Marcamos que no hay hover, para que el próximo frame se dibuje de nuevo
     }
     if (g_hover.is_hovering_ping)
     {
@@ -976,7 +1015,10 @@ int main(int argc, char **argv)
     }
     m_shared->volume = GetSystemVolume();
 
-    PingWorker ping;
+    PingWorker ping = {
+        .last_ping_ms = 0,
+        .running = false,
+    };
 
     ping_start(&ping);
     char su_buffer[256];
@@ -1013,6 +1055,7 @@ int main(int argc, char **argv)
     //        cairo_image_surface_get_height(c_surf));
     cr = cairo_create(c_surf);
     load_logo_surface();
+    zui_cairo_font(cr);
     int frame_count = refesco(surf);
     // cairo_destroy(cr);
     // cairo_surface_destroy(c_surf);
@@ -1096,7 +1139,7 @@ int refesco(struct wl_surface *surf)
         wl_display_flush(display);
 
         struct pollfd pfd = {.fd = wl_display_get_fd(display), .events = POLLIN};
-        //struct pollfd pfd2 = {.fd = wl_display_get_fd(display), .events = POLLIN};
+        // struct pollfd pfd2 = {.fd = wl_display_get_fd(display), .events = POLLIN};
 
         // --- CAMBIO AQUÍ: Cálculo del Timeout para el Reloj ---
         struct timespec now;
@@ -1116,7 +1159,7 @@ int refesco(struct wl_surface *surf)
 
         // 4. Lanzamos el poll con el tiempo justo
         int ret = poll(&pfd, 1, timeout_final);
-        
+
         if (ret == 0)
         {
             // ¡TIMEOUT! Ha pasado un minuto.
@@ -1147,18 +1190,17 @@ int refesco(struct wl_surface *surf)
         wl_display_dispatch_pending(display);
         if (configured && needs_redraw)
         {
-            //printf("refesco: needs_redraw=%d, g_hover.r_rendered=%d\n", needs_redraw, g_hover.r_rendered);
+            // printf("refesco: needs_redraw=%d, g_hover.r_rendered=%d\n", needs_redraw, g_hover.r_rendered);
 
             render_frame(surf);
             needs_redraw = false;
         }
         if (configured && g_hover.r_rendered && !needs_redraw)
         {
-            //printf("refesco: needs_redraw=%d, g_hover.r_rendered=%d\n", needs_redraw, g_hover.r_rendered);
+            // printf("refesco: needs_redraw=%d, g_hover.r_rendered=%d\n", needs_redraw, g_hover.r_rendered);
             render_frame(surf);
             g_hover.r_rendered = false;
         }
-
     }
     return 0;
 }
