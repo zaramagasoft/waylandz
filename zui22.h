@@ -77,13 +77,15 @@ void ping_stop(PingWorker *ping);
 void obtener_gamma_del_servicio(float *b, float *c, float *g)
 {
     // 1. Forzamos al sistema a enviar la 'q' y cerrar el pipe
-    system("echo 'q' > /tmp/gamma_pipe");
-    /*   static int fd = -1;
+    //
+    static int fd = -1;
 
-      if (fd == -1)
-          fd = open("/tmp/gamma_pipe", O_WRONLY);
+    if (fd == -1)
+        fd = open("/tmp/gamma_pipe", O_WRONLY);
 
-      write(fd, "q", 1); */
+    write(fd, "q", 1);
+    usleep(1000); // Esperamos un poco para que el servicio procese la 'q'
+                  // close(fd);
     // 2. Leemos la respuesta de un archivo temporal
     // Para que sea ultra sencillo, hagamos que el server escriba el resultado en un .txt
     // Es mucho más fiable que intentar leer el pipe de vuelta.
@@ -114,7 +116,7 @@ void enviar_comando_gamma(char cmd, float valor);
 int gammaDraw(struct nk_context *ctx, float y, float win_width)
 {
     uint64_t t = now_ns();
-    obtener_gamma_del_servicio(&bright_value, &contrast_value, &gamma_value);
+    // obtener_gamma_del_servicio(&bright_value, &contrast_value, &gamma_value);
     printf("gamma service %lu us\n", (now_ns() - t) / 1000);
     float row_h = 20.0f;
     int offset = 30;
@@ -288,6 +290,7 @@ void zui_init_colors()
     dark_bg = nk_rgba(10, 15, 10, 230);
     phosphor_green = nk_rgb(51, 255, 51);
     dark_green = nk_rgb(20, 60, 20);
+    obtener_gamma_del_servicio(&bright_value, &contrast_value, &gamma_value);
 }
 
 void zui_set_style(struct nk_context *ctx)
@@ -518,7 +521,7 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
             if (nk_button_label(ctx, "\uf08b"))
             {
                 // kill(-getpgrp(), SIGTERM);
-                //system("swaymsg exit");
+                // system("swaymsg exit");
                 system("swaymsg -q exit >/dev/null 2>&1");
                 exit(0);
             }
