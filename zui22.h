@@ -109,6 +109,8 @@ int kernelraw(struct nk_context *ctx, float y, float win_width, float middle_h);
 int metricsDraw(struct nk_context *ctx, float y, float win_width, float footer_h);
 int gammaDraw(struct nk_context *ctx, float y, float win_width); // Declaración de gammaDraw
 int pingDraw(struct nk_context *ctx, float y, float win_width, PingWorker *ping);
+int upDownDraw(struct nk_context *ctx, float y, float win_width); // Declaración de gammaDraw
+
 // DECLARACIÓN QUE TE FALTA:
 void enviar_comando_gamma(char cmd, float valor);
 #include <errno.h>
@@ -429,6 +431,7 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
 
         y = pingDraw(ctx, y, win_width, ping);
         printf("ping...... %lu us\n", (now_ns() - t) / 1000);
+        y = upDownDraw(ctx, y, win_width);
         t = now_ns();
         // =========================
         // 🔵 MIDDLE ZONE (debug opcional)
@@ -487,7 +490,7 @@ void zui_render(struct nk_context *ctx, int win_width, int win_height)
         // printf("Medidas middleh:%f \n", middle_h);
         // printf("winheightdESPUESLOGO:%f \n", win_height);
         // aqui offset para que los botones no se solapen con el footer
-        middle_h = middle_h - 50; // ajuste offset metricas + ping
+        middle_h = middle_h - 80; // ajuste offset metricas + ping
 
         // Iniciamos el layout para 3 widgets
         nk_layout_space_begin(ctx, NK_STATIC, footer_h, 3);
@@ -775,7 +778,6 @@ int metricsDraw(struct nk_context *ctx, float y, float win_width, float footer_h
              metricasZui->temp_c);
 
     // Ahora Nuklear lo recibirá perfecto
-    printf("Métricas en zui_render RED download: %.2f MB/s y UPLOAD: %.2f MB/s\n", metricasZui->net_download_mb, metricasZui->net_upload_mb);
     nk_label(ctx, metricasall, NK_TEXT_LEFT);
     // nk_label(ctx, metricasall, NK_TEXT_LEFT);
 
@@ -791,7 +793,7 @@ int pingDraw(struct nk_context *ctx, float y, float win_width, PingWorker *ping)
     // =========================
     nk_layout_space_begin(ctx, NK_STATIC, row_height, 1);
 
-    struct nk_rect ping_rect = nk_rect(25, y - 30, win_width / 2, row_height);
+    struct nk_rect ping_rect = nk_rect(25, y - 30, win_width, row_height);
 
     // g_hover.ping = ping_rect;
 
@@ -853,6 +855,87 @@ int pingDraw(struct nk_context *ctx, float y, float win_width, PingWorker *ping)
 
     ctx->style.text.color = color_original;
     ctx->style.window.fixed_background = old_bg;
+
+    // nk_label(ctx, ping_str, NK_TEXT_LEFT);
+
+    nk_layout_space_end(ctx);
+    return y - 30;
+}
+int upDownDraw(struct nk_context *ctx, float y, float win_width)
+{
+    float row_height = 20.0f; // La altura que reservamos para este bloque
+    // printf("Métricas en zui_render RED download: %.2f MB/s y UPLOAD: %.2f MB/s\n", metricasZui->net_download_mb, metricasZui->net_upload_mb);
+
+    // =========================
+    // 🌐 BLOQUE updownDraw
+    // =========================
+    nk_layout_space_begin(ctx, NK_STATIC, row_height, 1);
+
+    struct nk_rect updown_rect = nk_rect(25, y - 50, win_width, row_height);
+
+    // g_hover.ping = ping_rect;
+
+    nk_layout_space_push(ctx, updown_rect);
+
+    // Empujamos el rect en la posición 'y' actual
+    // nk_layout_space_push(ctx, nk_rect(25, y - 30, win_width / 2, row_height));
+
+    char updown_str[64]; // f06f4
+    snprintf(updown_str,
+             sizeof(updown_str),
+             "\uf019 %.2f MB/s  \uf093 %.2f MB/s",
+             metricasZui->net_download_mb,
+             metricasZui->net_upload_mb);
+    // puebas de tooltips and colors
+    // ctx->style.text.color = nk_rgb(255, 0, 0); // Verde fosforito para el ping
+    //  1. GET: Guardar el color actual en una variable temporal
+    // struct nk_color color_original = ctx->style.text.color;
+    // 1. Guardamos el estilo de fondo actual (es un nk_style_item)
+    // struct nk_style_item old_bg = ctx->style.window.fixed_background;
+
+    // 2. SET: Aplicar el nuevo color
+    // ctx->style.text.color = nk_rgb(255, 255, 255);
+    // ctx->style.window.tooltip_border_color = nk_rgb(255, 0, 0); // Cambiamos el color del borde del popup
+    // ctx->style.window.fixed_background.type = NK_STYLE_ITEM_COLOR;
+
+    // ... aquí dibujas tu tooltip ...
+    // nk_tooltip(ctx, "ping google.com");
+    //struct nk_rect boundsupdown = nk_widget_bounds(ctx);
+    //g_hover.updown = boundsupdown;
+    //if (nk_input_mouse_clicked(&ctx->input, NK_BUTTON_LEFT, boundsupdown))
+    //{
+        // ping->running = !ping->running;
+        // ping_start(ping);
+        // ping->running = !ping->running; // Toggle the running state
+        // zui_render pingDraw(ctx, y, win_width, ping);
+        /* for (int i = 0; i < 115; i++)
+        y = pingDraw(ctx, y, win_width, ping);
+            printf("¡Has hecho clic en el label del ping! Iteración %d\n", i + 1);
+            //usleep(100000); // Espera de 100 ms entre iteraciones
+         */
+        // printf("¡Has hecho clic en el label del ping!\n");
+    //}
+    // 3. RESTORE: Volver al color original usando la variable que guardaste
+    
+    
+        // printf("Mouse is hovering over the ping label\n");
+        //  ctx->style.text.color = nk_rgb(255, 0, 0); // Cambiamos el color del texto a amarillo
+        // ctx->style.window.background = nk_rgba(10, 15, 10, 230); // Cambiamos el color del texto a amarillo
+        // nk_tooltip(ctx, "ping google.com");
+        //g_hover.is_hovering_updown = true; // Guardamos las coordenadas del rectángulo del ping en la estructura global
+
+        // ctx->style.text.color = nk_rgb(255, 0, 0); // Cambiamos el color del texto a amarillo
+        // nk_label(ctx, updown_str, NK_TEXT_LEFT);
+    
+    
+        // printf("Mouse is NOT hovering over the ping label\n");
+        // ctx->style.text.color = color_original; // Restauramos el color original
+        //g_hover.is_hovering_updown = false;
+        nk_label(ctx, updown_str, NK_TEXT_LEFT);
+    
+
+    // ctx->style.text.color = color_original;
+    // ctx->style.window.fixed_background = old_bg;
 
     // nk_label(ctx, ping_str, NK_TEXT_LEFT);
 

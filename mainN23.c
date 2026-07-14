@@ -902,7 +902,7 @@ static void pointer_motion(void *data, struct wl_pointer *ptr, uint32_t time, wl
     {
         needs_redraw = false; // No hay interacción, no redibujamos
     } */
-    if (nk_input_is_mouse_hovering_rect(&ctx.input, g_hover.ping) || nk_input_is_mouse_hovering_rect(&ctx.input, g_hover.volume) || nk_input_is_mouse_hovering_rect(&ctx.input, g_hover.bright) || nk_input_is_mouse_hovering_rect(&ctx.input, g_hover.contrast) || nk_input_is_mouse_hovering_rect(&ctx.input, g_hover.gamma) || nk_input_is_mouse_hovering_rect(&ctx.input, g_hover.reboot) || nk_input_is_mouse_hovering_rect(&ctx.input, g_hover.exit) || nk_input_is_mouse_hovering_rect(&ctx.input, g_hover.power))
+    if (nk_input_is_mouse_hovering_rect(&ctx.input, g_hover.ping) || nk_input_is_mouse_hovering_rect(&ctx.input, g_hover.volume) || nk_input_is_mouse_hovering_rect(&ctx.input, g_hover.bright) || nk_input_is_mouse_hovering_rect(&ctx.input, g_hover.contrast) || nk_input_is_mouse_hovering_rect(&ctx.input, g_hover.gamma) || nk_input_is_mouse_hovering_rect(&ctx.input, g_hover.reboot) || nk_input_is_mouse_hovering_rect(&ctx.input, g_hover.exit) || nk_input_is_mouse_hovering_rect(&ctx.input, g_hover.power) || nk_input_is_mouse_hovering_rect(&ctx.input, g_hover.updown))
     {
         needs_redraw = true;
         // printf("PING HOVER\n");
@@ -935,6 +935,15 @@ static void pointer_motion(void *data, struct wl_pointer *ptr, uint32_t time, wl
     if (g_hover.is_hovering_gamma)
     {
         // printf("GAMMA HOVER \n");
+        needs_redraw = true;
+    }
+    if (g_hover.is_hovering_updown)
+    {
+        // printf("UPDOWN HOVER \n");
+        needs_redraw = true;
+    }
+    {
+        // printf("REBOOT HOVER \n");
         needs_redraw = true;
     }
 }
