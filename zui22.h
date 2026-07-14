@@ -775,6 +775,7 @@ int metricsDraw(struct nk_context *ctx, float y, float win_width, float footer_h
              metricasZui->temp_c);
 
     // Ahora Nuklear lo recibirá perfecto
+    printf("Métricas en zui_render RED download: %.2f MB/s y UPLOAD: %.2f MB/s\n", metricasZui->net_download_mb, metricasZui->net_upload_mb);
     nk_label(ctx, metricasall, NK_TEXT_LEFT);
     // nk_label(ctx, metricasall, NK_TEXT_LEFT);
 

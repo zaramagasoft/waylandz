@@ -8,6 +8,12 @@
 static char temp_path[256] = "";
 static long last_total = 0, last_idle = 0;
 
+static unsigned long long last_rx = 0;
+static unsigned long long last_tx = 0;
+static char net_iface[32] = "";
+static float rx_avg = 0.0f;
+static float tx_avg = 0.0f;
+
 // Función auxiliar para leer strings de archivos del sistema
 void read_sys_file(const char *path, char *dest, int size)
 {
@@ -141,6 +147,39 @@ void metrics_init(ZMetrics *m)
         }
         closedir(dr);
     }
+    // =========================================
+    // Detectar interfaz de red principal
+    // =========================================
+    FILE *f_net = fopen("/proc/net/dev", "r");
+    if (f_net)
+    {
+        char line[256];
+
+        // Saltamos las dos primeras líneas de cabecera
+        fgets(line, sizeof(line), f_net);
+        fgets(line, sizeof(line), f_net);
+
+        while (fgets(line, sizeof(line), f_net))
+        {
+            char iface[32];
+
+            // Leemos el nombre antes de los ':'
+            if (sscanf(line, " %31[^:]:", iface) == 1)
+            {
+                // Ignoramos loopback
+                if (strcmp(iface, "lo") != 0)
+                {
+                    strncpy(net_iface, iface, sizeof(net_iface) - 1);
+                    net_iface[sizeof(net_iface) - 1] = '\0';
+
+                    printf("Interfaz detectada: %s\n", net_iface);
+                    break;
+                }
+            }
+        }
+
+        fclose(f_net);
+    }
 }
 
 void metrics_update(ZMetrics *m)
@@ -201,5 +240,63 @@ void metrics_update(ZMetrics *m)
             }
             fclose(ft);
         }
+    }
+    // download updload
+    FILE *f_net = fopen("/proc/net/dev", "r");
+    if (f_net)
+    {
+        char line[256];
+
+        fgets(line, sizeof(line), f_net);
+        fgets(line, sizeof(line), f_net);
+
+        while (fgets(line, sizeof(line), f_net))
+        {
+            if (strstr(line, net_iface))
+            {
+                unsigned long long rx, tx;
+
+                sscanf(line,
+                       " %*[^:]: %llu %*u %*u %*u %*u %*u %*u %*u %llu",
+                       &rx,
+                       &tx);
+
+                if (last_rx != 0)
+                {
+                    unsigned long long delta_rx = rx - last_rx;
+                    unsigned long long delta_tx = tx - last_tx;
+
+                    /*  m->net_download_mb = (float)delta_rx / (1024.0f * 1024.0f * 2.0f);
+                     m->net_upload_mb = (float)delta_tx / (1024.0f * 1024.0f * 2.0f);
+  */
+                    float down = (float)delta_rx / (1024.0f * 1024.0f * 2.0f);
+                    float up = (float)delta_tx / (1024.0f * 1024.0f * 2.0f);
+
+                    // Media exponencial (70% anterior, 30% nueva)
+                    rx_avg = rx_avg * 0.25f + down * 0.75f;
+                    tx_avg = tx_avg * 0.25f + up * 0.75f;
+
+                    m->net_download_mb = rx_avg;
+                    m->net_upload_mb = tx_avg;
+                    if (m->net_download_mb < 0.01f)
+                        m->net_download_mb = 0.0f;
+
+                    if (m->net_upload_mb < 0.01f)
+                        m->net_upload_mb = 0.0f;
+                    printf("RX:%llu  TX:%llu  ↓ %.2f MB/s  ↑ %.2f MB/s\n",
+                           rx,
+                           tx,
+                           m->net_download_mb,
+                           m->net_upload_mb);
+                }
+
+                last_rx = rx;
+                last_tx = tx;
+
+                break;
+            }
+        }
+
+        fclose(f_net);
     }
 }

@@ -452,8 +452,8 @@ void *hilo_funcion(void *arg)
         close(sock);
         usleep(2000000); // 2 segundos para no saturar
 
-        metricasZui = &m; // Asignamos el puntero a la estructura ZMetrics
-        close(sock);
+        //metricasZui = &m; // Asignamos el puntero a la estructura ZMetrics
+        //close(sock);
         usleep(200000);
         g_hover.r_rendered = true; // Marcamos que necesitamos redibujar
     }
@@ -1025,6 +1025,7 @@ int main(int argc, char **argv)
     //[[[[[[[[[printf("%s\n", kernelinfo(su_buffer, sizeof(su_buffer)));
     // --- 2. LANZAR EL MONITOR (FORK) ---
     *mi_buffer = kernelinfo(su_buffer, sizeof(su_buffer));
+    metricasZui = &datos_compartidos;
     // monitor_pactl_simple(); // Iniciamos el monitor de volumen en un proceso aparte
     start_zui_monitor();
     // start_zui_metrics_monitor(); // Iniciamos el monitor de volumen en un proceso aparte

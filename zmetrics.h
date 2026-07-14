@@ -3,6 +3,8 @@
 
 typedef struct
 {
+    float net_download_mb;
+    float net_upload_mb;
     float cpu_usage;
     float mem_used_gb;
     float mem_total_gb;
